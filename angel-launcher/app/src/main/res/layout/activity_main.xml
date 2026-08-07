@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipChildren="false"
+    android:clipToPadding="false">
+
+    <!-- Single Full-Width Background View for State 1 (App List View) -->
+    <View
+        android:id="@+id/appListBackgroundView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
+    <LinearLayout 
+        android:id="@+id/mainContentContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:orientation="vertical">
+
+        <!-- Top Edit Mode Bar -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/editModeBanner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            app:cardBackgroundColor="#2A2D32"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="10dp">
+
+                <ImageView
+                    android:id="@+id/ivEditModeIcon"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_edit_pencil"
+                    app:tint="#80D8FF" />
+
+                <TextView
+                    android:id="@+id/tvEditModeBannerTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="12dp"
+                    android:text="Edit Home Screen"
+                    android:textColor="#FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:id="@+id/btnDoneEditMode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:background="@drawable/search_bar_bg"
+                    android:backgroundTint="#3380D8FF"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="7dp">
+
+                    <ImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:src="@drawable/ic_check"
+                        app:tint="#80D8FF" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:text="Done"
+                        android:textColor="#80D8FF"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Main Widget Container Area (Houses both Default & User Widgets) -->
+        <LinearLayout
+            android:id="@+id/widgetAreaContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <include 
+                android:id="@+id/headerWidget"
+                layout="@layout/header_weather_widget" />
+
+            <!-- User Added Widget Section -->
+            <FrameLayout
+                android:id="@+id/userWidgetContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="20dp"
+                android:layout_marginBottom="4dp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipChildren="false"
+            android:clipToPadding="false">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="24dp"
+                android:clipToPadding="false"
+                android:paddingTop="0dp"
+                android:paddingBottom="120dp"
+                android:requiresFadingEdge="vertical"
+                android:fadingEdgeLength="48dp"
+                android:cacheColorHint="#00000000"
+                android:layerType="hardware" />
+
+        </FrameLayout>
+    </LinearLayout>
+
+    <vibes.launcher.angel.ui.ScrubberView
+        android:id="@+id/scrubberView"
+        android:layout_width="72dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end|top" />
+        
+    <ImageView
+        android:id="@+id/searchFab"
+        android:layout_width="58dp"
+        android:layout_height="58dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="58dp"
+        android:layout_marginBottom="72dp"
+        android:src="@android:drawable/ic_menu_search"
+        android:background="@drawable/fab_bg"
+        android:scaleType="center"
+        android:tint="#FFFFFF"
+        android:alpha="0"
+        android:elevation="6dp"
+        android:visibility="gone" />
+
+    <View
+        android:id="@+id/searchDimBackground"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/transparent"
+        android:alpha="0"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/searchContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingTop="48dp"
+        android:alpha="0"
+        android:visibility="gone">
+        
+        <androidx.cardview.widget.CardView
+            android:id="@+id/searchCardView"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginHorizontal="24dp"
+            app:cardCornerRadius="28dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="#33FFFFFF">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:paddingHorizontal="16dp"
+                android:gravity="center_vertical">
+                
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@android:drawable/ic_menu_search"
+                    app:tint="#FFFFFF" />
+                    
+                <EditText
+                    android:id="@+id/searchInput"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginEnd="16dp"
+                    android:hint="Search apps"
+                    android:textColorHint="#80FFFFFF"
+                    android:textColor="#FFFFFF"
+                    android:background="@null"
+                    android:textSize="18sp"
+                    android:singleLine="true" />
+                </LinearLayout>
+        </androidx.cardview.widget.CardView>
+        
+        <TextView
+            android:id="@+id/searchSubtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Recently opened"
+            android:textColor="#80FFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:paddingHorizontal="32dp"
+            android:paddingTop="32dp"
+            android:paddingBottom="8dp" />
+            
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recentAppsRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+            
+    </LinearLayout>
+</FrameLayout>

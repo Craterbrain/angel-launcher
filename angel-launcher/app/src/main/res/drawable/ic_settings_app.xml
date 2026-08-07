@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Dark Theme Base (Rounded Square rx=22) -->
+    <path
+        android:fillColor="#121212"
+        android:pathData="M 22,0 L 78,0 A 22,22 0 0 1 100,22 L 100,78 A 22,22 0 0 1 78,100 L 22,100 A 22,22 0 0 1 0,78 L 0,22 A 22,22 0 0 1 22,0 Z" />
+
+    <!-- Gear Body & Teeth -->
+    <!-- Vertical Tooth (0 deg) -->
+    <group
+        android:pivotX="50"
+        android:pivotY="50">
+        <path
+            android:fillColor="#546E7A"
+            android:pathData="M 46,20 L 54,20 A 4,4 0 0 1 58,24 L 58,76 A 4,4 0 0 1 54,80 L 46,80 A 4,4 0 0 1 42,76 L 42,24 A 4,4 0 0 1 46,20 Z" />
+    </group>
+
+    <!-- 60 Degree Tooth -->
+    <group
+        android:pivotX="50"
+        android:pivotY="50"
+        android:rotation="60">
+        <path
+            android:fillColor="#546E7A"
+            android:pathData="M 46,20 L 54,20 A 4,4 0 0 1 58,24 L 58,76 A 4,4 0 0 1 54,80 L 46,80 A 4,4 0 0 1 42,76 L 42,24 A 4,4 0 0 1 46,20 Z" />
+    </group>
+
+    <!-- 120 Degree Tooth -->
+    <group
+        android:pivotX="50"
+        android:pivotY="50"
+        android:rotation="120">
+        <path
+            android:fillColor="#546E7A"
+            android:pathData="M 46,20 L 54,20 A 4,4 0 0 1 58,24 L 58,76 A 4,4 0 0 1 54,80 L 46,80 A 4,4 0 0 1 42,76 L 42,24 A 4,4 0 0 1 46,20 Z" />
+    </group>
+
+    <!-- Main Inner Circle (r=22) -->
+    <path
+        android:fillColor="#546E7A"
+        android:pathData="M 50,28 A 22,22 0 1 1 49.99,28 Z" />
+
+    <!-- Gear Hole (r=10) -->
+    <path
+        android:fillColor="#121212"
+        android:pathData="M 50,40 A 10,10 0 1 1 49.99,40 Z" />
+
+    <!-- Angel Cyan Accent Core (r=4) -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M 50,46 A 4,4 0 1 1 49.99,46 Z" />
+</vector>

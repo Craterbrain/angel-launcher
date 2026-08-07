@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp"
+    android:height="100dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <!-- Light Grey Base -->
+    <path
+        android:fillColor="#ECEFF1"
+        android:pathData="M 50,50 m -48,0 a 48,48 0 1,0 96,0 a 48,48 0 1,0 -96,0" />
+
+    <!-- Left Mountain Leg (Illuminated) -->
+    <path
+        android:fillColor="#90A4AE"
+        android:pathData="M 38,25 L 20,80 L 46,80 L 46,25 Z" />
+
+    <!-- Right Mountain Leg (Shadowed) -->
+    <path
+        android:fillColor="#546E7A"
+        android:pathData="M 62,25 L 80,80 L 54,80 L 54,25 Z" />
+
+    <!-- Inner Waterfall Drop Shadow -->
+    <path
+        android:fillColor="#000000"
+        android:fillAlpha="0.2"
+        android:pathData="M 48,25 L 56,25 L 54,85 L 50,85 Z" />
+
+    <!-- Solid Teal Waterfall -->
+    <path
+        android:fillColor="#00B4D8"
+        android:pathData="M 46,25 L 54,25 L 51,85 L 49,85 Z" />
+
+    <!-- Right Crossbar (Darker) -->
+    <path
+        android:fillColor="#37474F"
+        android:pathData="M 54,60 L 72,60 L 69,65 L 54,65 Z" />
+
+    <!-- Left Crossbar (Lighter) -->
+    <path
+        android:fillColor="#CFD8DC"
+        android:pathData="M 46,60 L 28,60 L 31,65 L 46,65 Z" />
+</vector>

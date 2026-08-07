@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="76dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:layout_marginEnd="8dp"
+    android:padding="6dp"
+    android:background="?attr/selectableItemBackground">
+
+    <FrameLayout
+        android:id="@+id/iconCardFrame"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:background="#15FFFFFF">
+
+        <ImageView
+            android:id="@+id/topBarIconImage"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_gravity="center"
+            android:scaleType="fitCenter" />
+
+        <!-- Active selection check indicator -->
+        <View
+            android:id="@+id/selectedIndicator"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#33FFFFFF"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/topBarIconLabel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center"
+        android:text="System"
+        android:textSize="11sp"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:textColor="#DDFFFFFF" />
+
+</LinearLayout>

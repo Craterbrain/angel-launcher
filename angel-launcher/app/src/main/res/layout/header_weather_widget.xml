@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/weatherWidgetContainer"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="12dp"
+    android:paddingBottom="12dp"
+    android:paddingHorizontal="24dp"
+    android:clipToPadding="false">
+
+    <!-- Top Row: Clock & Date (Left) | Current Weather Icon & Temp/Location (Right) -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        
+        <!-- Left Side: Clock & Date -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="bottom">
+                
+                <TextView
+                    android:id="@+id/clockText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="8:53"
+                    android:textSize="68sp"
+                    android:textColor="#FFFFFF"
+                    android:shadowColor="#80000000"
+                    android:shadowDx="1"
+                    android:shadowDy="2"
+                    android:shadowRadius="5"
+                    android:includeFontPadding="false"
+                    android:fontFamily="sans-serif" />
+                
+                <TextView
+                    android:id="@+id/amPmText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="PM"
+                    android:textSize="20sp"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold"
+                    android:shadowColor="#80000000"
+                    android:shadowDx="1"
+                    android:shadowDy="2"
+                    android:shadowRadius="4"
+                    android:layout_marginStart="6dp"
+                    android:layout_marginBottom="10dp"
+                    android:includeFontPadding="false" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/dateText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Wed, Aug 5"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:shadowColor="#80000000"
+                android:shadowDx="1"
+                android:shadowDy="2"
+                android:shadowRadius="4"
+                android:layout_marginStart="2dp"
+                android:layout_marginTop="2dp"
+                android:fontFamily="sans-serif" />
+
+        </LinearLayout>
+
+        <!-- Right Side: Weather Condition Icon & Location/Temp -->
+        <LinearLayout
+            android:id="@+id/weatherCurrentContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="end"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true">
+            
+            <ImageView
+                android:id="@+id/weatherIconCurrent"
+                android:layout_width="54dp"
+                android:layout_height="54dp"
+                android:src="@drawable/ic_weather_sunny"
+                android:contentDescription="Weather Icon"
+                android:layout_marginBottom="6dp" />
+                
+            <TextView
+                android:id="@+id/weatherText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Crab Orchard 72°"
+                android:textSize="17sp"
+                android:textColor="#FFFFFF"
+                android:shadowColor="#80000000"
+                android:shadowDx="1"
+                android:shadowDy="2"
+                android:shadowRadius="4"
+                android:fontFamily="sans-serif"
+                android:gravity="end" />
+        </LinearLayout>
+    </RelativeLayout>
+
+    <!-- Bottom Row: 5-Day Forecast -->
+    <LinearLayout
+        android:id="@+id/forecastContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="24dp"
+        android:weightSum="5">
+
+        <!-- Day 1 -->
+        <LinearLayout
+            android:id="@+id/forecastDay1Container"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+            <TextView
+                android:id="@+id/forecastDay1Name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Today"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif-medium"
+                android:shadowColor="#80000000"
+                android:shadowDx="1"
+                android:shadowDy="2"
+                android:shadowRadius="4"/>
+            <ImageView
+                android:id="@+id/forecastDay1Icon"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:src="@drawable/ic_weather_sunny"
+                android:contentDescription="Forecast Day 1"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="6dp"/>
+            <TextView
+                android:id="@+id/forecastDay1Temp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="85°/67°"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:fontFamily="sans-serif"
+                android:shadowColor="#80000000"
+                android:shadowDx="1"
+                android:shadowDy="2"
+                android:shadowRadius="4"/>
+        </LinearLayout>
+        
+        <!-- Day 2 -->
+        <LinearLayout
+            android:id="@+id/forecastDay2Container"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+            <TextView
+                android:id="@+id/forecastDay2Name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Thu"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif-medium"
+                android:shadowColor="#80000000"
+                android:shadowDx="1"
+                android:shadowDy="2"
+                android:shadowRadius="4"/>
+            <ImageView
+                android:id="@+id/forecastDay2Icon"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:src="@drawable/ic_weather_sunny"
+                android:contentDescription="Forecast Day 2"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="6dp"/>
+            <TextView
+                android:id="@+id/forecastDay2Temp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="83°/67°"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:fontFamily="sans-serif"
+                android:shadowColor="#80000000"
+                android:shadowDx="1"
+                android:shadowDy="2"
+                android:shadowRadius="4"/>
+        </LinearLayout>
+
+        <!-- Day 3 -->
+        <LinearLayout
+            android:id="@+id/forecastDay3Container"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+            <TextView
+                android:id="@+id/forecastDay3Name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Fri"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif-medium"
+                android:shadowColor="#80000000"
+                android:shadowDx="1"
+                android:shadowDy="2"
+                android:shadowRadius="4"/>
+            <ImageView
+                android:id="@+id/forecastDay3Icon"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:src="@drawable/ic_weather_partly_cloudy"
+                android:contentDescription="Forecast Day 3"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="6dp"/>
+            <TextView
+                android:id="@+id/forecastDay3Temp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="84°/67°"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:fontFamily="sans-serif"
+                android:shadowColor="#80000000"
+                android:shadowDx="1"
+                android:shadowDy="2"
+                android:shadowRadius="4"/>
+        </LinearLayout>
+
+        <!-- Day 4 -->
+        <LinearLayout
+            android:id="@+id/forecastDay4Container"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+            <TextView
+                android:id="@+id/forecastDay4Name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Sat"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif-medium"
+                android:shadowColor="#80000000"
+                android:shadowDx="1"
+                android:shadowDy="2"
+                android:shadowRadius="4"/>
+            <ImageView
+                android:id="@+id/forecastDay4Icon"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:src="@drawable/ic_weather_rain"
+                android:contentDescription="Forecast Day 4"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="6dp"/>
+            <TextView
+                android:id="@+id/forecastDay4Temp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="85°/67°"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:fontFamily="sans-serif"
+                android:shadowColor="#80000000"
+                android:shadowDx="1"
+                android:shadowDy="2"
+                android:shadowRadius="4"/>
+        </LinearLayout>
+
+        <!-- Day 5 -->
+        <LinearLayout
+            android:id="@+id/forecastDay5Container"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:orientation="vertical">
+            <TextView
+                android:id="@+id/forecastDay5Name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Sun"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif-medium"
+                android:shadowColor="#80000000"
+                android:shadowDx="1"
+                android:shadowDy="2"
+                android:shadowRadius="4"/>
+            <ImageView
+                android:id="@+id/forecastDay5Icon"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:src="@drawable/ic_weather_rain"
+                android:contentDescription="Forecast Day 5"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="6dp"/>
+            <TextView
+                android:id="@+id/forecastDay5Temp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="85°/68°"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:fontFamily="sans-serif"
+                android:shadowColor="#80000000"
+                android:shadowDx="1"
+                android:shadowDy="2"
+                android:shadowRadius="4"/>
+        </LinearLayout>
+    </LinearLayout>
+
+</LinearLayout>
