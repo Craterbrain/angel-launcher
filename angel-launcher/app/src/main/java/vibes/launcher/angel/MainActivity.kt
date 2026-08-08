@@ -261,7 +261,7 @@ class MainActivity : FragmentActivity() {
                 recyclerView.paddingLeft,
                 0,
                 recyclerView.paddingRight,
-                navInsets.bottom + (120 * resources.displayMetrics.density).toInt()
+                navInsets.bottom
             )
             
             val rvParams = recyclerView.layoutParams as android.widget.FrameLayout.LayoutParams
@@ -1600,7 +1600,7 @@ class MainActivity : FragmentActivity() {
                 allFavApps
             }
             
-            favoritesList = sortedFavApps.map { AppListItem.App(it) }
+            favoritesList = sortedFavApps.map { AppListItem.App(it) } + listOf(AppListItem.Header(""))
             
             // Build full alphabet list (State 1)
             val tempFullAlphabetList = mutableListOf<AppListItem>()
@@ -1618,6 +1618,7 @@ class MainActivity : FragmentActivity() {
             }
             tempFullAlphabetList.add(AppListItem.Divider)
             tempFullAlphabetList.add(AppListItem.App(settingsApp))
+            tempFullAlphabetList.add(AppListItem.Header(""))
             fullAlphabetList = tempFullAlphabetList
             
             // Set initial state

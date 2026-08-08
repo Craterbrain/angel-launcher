@@ -211,7 +211,7 @@ class AppListAdapter(
                 itemView.visibility = View.INVISIBLE
                 itemView.layoutParams = RecyclerView.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, 
-                    (32 * itemView.resources.displayMetrics.density).toInt()
+                    (120 * itemView.resources.displayMetrics.density).toInt()
                 )
             } else {
                 itemView.visibility = View.VISIBLE
