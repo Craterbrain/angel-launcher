@@ -36,6 +36,14 @@ class SettingsManager(private val context: Context) {
         return if (isDarkThemeActive()) 0.20f else 0.08f
     }
 
+    private fun getDefaultSearchDimColor(): Int {
+        return if (isDarkThemeActive()) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+    }
+
+    private fun getDefaultSearchDimOpacity(): Float {
+        return if (isDarkThemeActive()) 0.80f else 0.90f
+    }
+
     private val memCache = ConcurrentHashMap<String, Any>()
     private val NULL_SENTINEL = Any()
 
@@ -233,16 +241,16 @@ class SettingsManager(private val context: Context) {
 
     // Search Dim Overlay Color
     var searchDimColor: Int
-        get() = getCachedInt("search_dim_color", 0xFF000000.toInt())
+        get() = getCachedInt("search_dim_color", getDefaultSearchDimColor())
         set(value) = setCachedInt("search_dim_color", value)
 
     var searchDimOpacity: Float
-        get() = getCachedFloat("search_dim_opacity", 0.80f)
+        get() = getCachedFloat("search_dim_opacity", getDefaultSearchDimOpacity())
         set(value) = setCachedFloat("search_dim_opacity", value)
 
     fun resetSearchDimColor() {
-        searchDimColor = 0xFF000000.toInt()
-        searchDimOpacity = 0.80f
+        searchDimColor = getDefaultSearchDimColor()
+        searchDimOpacity = getDefaultSearchDimOpacity()
     }
 
     // Search FAB Color

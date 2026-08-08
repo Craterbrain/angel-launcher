@@ -702,6 +702,13 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun applyThemeColors() {
+        val isDark = isDarkThemeActive()
+        val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+        controller.isAppearanceLightStatusBars = !isDark
+        controller.isAppearanceLightNavigationBars = !isDark
+
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+
         scrubberView.setTextColor(settingsManager.scrubberTextColor, settingsManager.scrubberTextOpacity)
         
         val dimColor = androidx.core.graphics.ColorUtils.setAlphaComponent(
@@ -714,7 +721,15 @@ class MainActivity : FragmentActivity() {
             settingsManager.searchBarColor,
             (settingsManager.searchBarOpacity.coerceIn(0f, 1f) * 255).toInt()
         )
-        searchCardView.setCardBackgroundColor(searchPillColor)
+
+        if (isDark) {
+            searchCardView.cardElevation = 0f
+            searchCardView.setCardBackgroundColor(searchPillColor)
+        } else {
+            // Elevated solid white search card in light mode
+            searchCardView.cardElevation = 2f * resources.displayMetrics.density
+            searchCardView.setCardBackgroundColor(android.graphics.Color.WHITE)
+        }
         
         val fabColor = androidx.core.graphics.ColorUtils.setAlphaComponent(
             settingsManager.searchFabColor,
@@ -770,13 +785,16 @@ class MainActivity : FragmentActivity() {
         )
         editModeBanner.setBackgroundColor(bannerColor)
         
+        // Refresh adapters settings & colors
+        appListAdapter.refreshSettings()
+        recentAppListAdapter.refreshSettings()
+        
         if (isStateOneActive) {
             val tintColor = getAppListTintColor()
             appListBackgroundView.setBackgroundColor(tintColor)
             appListBackgroundView.visibility = View.VISIBLE
             recyclerView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
             scrubberView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-            window.navigationBarColor = tintColor
         }
     }
 
@@ -802,7 +820,7 @@ class MainActivity : FragmentActivity() {
         appListBackgroundView.visibility = View.VISIBLE
         recyclerView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
         scrubberView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-        window.navigationBarColor = tintColor
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
         
         appListAdapter.setItemsImmediate(fullAlphabetList)
     }
