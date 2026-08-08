@@ -151,6 +151,10 @@ class SettingsManager(private val context: Context) {
         get() = getCachedInt("theme_mode", 0)
         set(value) = setCachedInt("theme_mode", value)
 
+    var navBarThemeMode: Int // 0 = Transparent, 1 = Monet Secondary
+        get() = getCachedInt("nav_bar_theme_mode", 0)
+        set(value) = setCachedInt("nav_bar_theme_mode", value)
+
     var iconPackPackage: String?
         get() = getCachedString("icon_pack_package", null)
         set(value) = setCachedString("icon_pack_package", value)

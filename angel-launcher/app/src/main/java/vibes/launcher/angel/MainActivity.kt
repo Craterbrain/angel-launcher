@@ -213,10 +213,12 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         vibes.launcher.angel.util.DeviceUtils.applyOrientationLock(this)
         
+        settingsManager = SettingsManager(this)
+        
         // Enable full edge-to-edge layouts drawing behind system status and navigation bars
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         
-        window.navigationBarColor = 0x01000000
+        window.navigationBarColor = getNavigationBarColorToApply()
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }
@@ -304,7 +306,6 @@ class MainActivity : FragmentActivity() {
 
         val database = AppDatabase.getDatabase(this)
         appRepository = AppRepository(applicationContext, database.appDao())
-        settingsManager = SettingsManager(this)
         iconPackParser = IconPackParser()
         iconCacheManager = IconCacheManager(this)
         iconExtractor = IconExtractor()
@@ -705,13 +706,39 @@ class MainActivity : FragmentActivity() {
         return androidx.core.graphics.ColorUtils.setAlphaComponent(baseColor, alpha)
     }
 
+    private fun getNavigationBarColorToApply(): Int {
+        val isDark = isDarkThemeActive()
+        return when (settingsManager.navBarThemeMode) {
+            1 -> {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    if (isDark) {
+                        androidx.core.content.ContextCompat.getColor(this, android.R.color.system_accent2_800)
+                    } else {
+                        androidx.core.content.ContextCompat.getColor(this, android.R.color.system_accent2_100)
+                    }
+                } else {
+                    val typedValue = android.util.TypedValue()
+                    theme.resolveAttribute(com.google.android.material.R.attr.colorSecondary, typedValue, true)
+                    typedValue.data
+                }
+            }
+            else -> {
+                if (isDark) {
+                    android.graphics.Color.TRANSPARENT
+                } else {
+                    0x01000000
+                }
+            }
+        }
+    }
+
     private fun applyThemeColors() {
         val isDark = isDarkThemeActive()
         val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
         controller.isAppearanceLightStatusBars = !isDark
         controller.isAppearanceLightNavigationBars = !isDark
 
-        window.navigationBarColor = 0x01000000
+        window.navigationBarColor = getNavigationBarColorToApply()
 
         scrubberView.setTextColor(settingsManager.scrubberTextColor, settingsManager.scrubberTextOpacity)
         
@@ -849,7 +876,7 @@ class MainActivity : FragmentActivity() {
         appListBackgroundView.visibility = View.VISIBLE
         recyclerView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
         scrubberView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-        window.navigationBarColor = 0x01000000
+        window.navigationBarColor = getNavigationBarColorToApply()
         
         appListAdapter.setItemsImmediate(fullAlphabetList)
     }
@@ -877,7 +904,7 @@ class MainActivity : FragmentActivity() {
         appListBackgroundView.visibility = View.GONE
         recyclerView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
         scrubberView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-        window.navigationBarColor = 0x01000000
+        window.navigationBarColor = getNavigationBarColorToApply()
         
         applyWidgetLayoutSettings()
         appListAdapter.setItemsImmediate(favoritesList)
