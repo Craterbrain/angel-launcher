@@ -121,7 +121,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:layout_marginEnd="24dp"
-                android:clipToPadding="false"
+                android:clipToPadding="true"
                 android:paddingTop="0dp"
                 android:paddingBottom="0dp"
                 android:requiresFadingEdge="vertical"

@@ -10,8 +10,31 @@ data class UserWidgetConfig(
     var isAboveClock: Boolean = false
 )
 
-class SettingsManager(context: Context) {
+class SettingsManager(private val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("angel_launcher_prefs", Context.MODE_PRIVATE)
+
+    private fun isDarkThemeActive(): Boolean {
+        return when (val mode = prefs.getInt("theme_mode", 0)) {
+            1 -> false
+            2 -> true
+            else -> {
+                val uiMode = context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+                uiMode == android.content.res.Configuration.UI_MODE_NIGHT_YES
+            }
+        }
+    }
+
+    private fun getDefaultTextColor(): Int {
+        return if (isDarkThemeActive()) 0xFFFFFFFF.toInt() else 0xFF222222.toInt()
+    }
+
+    private fun getDefaultSearchBarColor(): Int {
+        return if (isDarkThemeActive()) 0xFFFFFFFF.toInt() else 0xFF000000.toInt()
+    }
+
+    private fun getDefaultSearchBarOpacity(): Float {
+        return if (isDarkThemeActive()) 0.20f else 0.08f
+    }
 
     private val memCache = ConcurrentHashMap<String, Any>()
     private val NULL_SENTINEL = Any()
@@ -168,7 +191,7 @@ class SettingsManager(context: Context) {
 
     // App List Text & Headers Color
     var appTextColor: Int
-        get() = getCachedInt("app_text_color", 0xFFFFFFFF.toInt())
+        get() = getCachedInt("app_text_color", getDefaultTextColor())
         set(value) = setCachedInt("app_text_color", value)
 
     var appTextOpacity: Float
@@ -176,13 +199,13 @@ class SettingsManager(context: Context) {
         set(value) = setCachedFloat("app_text_opacity", value)
 
     fun resetAppTextColor() {
-        appTextColor = 0xFFFFFFFF.toInt()
+        appTextColor = getDefaultTextColor()
         appTextOpacity = 1.0f
     }
 
     // Scrubber Letters Color
     var scrubberTextColor: Int
-        get() = getCachedInt("scrubber_text_color", 0xFFFFFFFF.toInt())
+        get() = getCachedInt("scrubber_text_color", getDefaultTextColor())
         set(value) = setCachedInt("scrubber_text_color", value)
 
     var scrubberTextOpacity: Float
@@ -190,22 +213,22 @@ class SettingsManager(context: Context) {
         set(value) = setCachedFloat("scrubber_text_opacity", value)
 
     fun resetScrubberTextColor() {
-        scrubberTextColor = 0xFFFFFFFF.toInt()
+        scrubberTextColor = getDefaultTextColor()
         scrubberTextOpacity = 1.0f
     }
 
     // Search Bar Surface Color
     var searchBarColor: Int
-        get() = getCachedInt("search_bar_color", 0xFFFFFFFF.toInt())
+        get() = getCachedInt("search_bar_color", getDefaultSearchBarColor())
         set(value) = setCachedInt("search_bar_color", value)
 
     var searchBarOpacity: Float
-        get() = getCachedFloat("search_bar_opacity", 0.20f)
+        get() = getCachedFloat("search_bar_opacity", getDefaultSearchBarOpacity())
         set(value) = setCachedFloat("search_bar_opacity", value)
 
     fun resetSearchBarColor() {
-        searchBarColor = 0xFFFFFFFF.toInt()
-        searchBarOpacity = 0.20f
+        searchBarColor = getDefaultSearchBarColor()
+        searchBarOpacity = getDefaultSearchBarOpacity()
     }
 
     // Search Dim Overlay Color
@@ -239,7 +262,7 @@ class SettingsManager(context: Context) {
 
     // Header Widget Clock & Date Text Color
     var clockTextColor: Int
-        get() = getCachedInt("clock_text_color", 0xFFFFFFFF.toInt())
+        get() = getCachedInt("clock_text_color", getDefaultTextColor())
         set(value) = setCachedInt("clock_text_color", value)
 
     var clockTextOpacity: Float
@@ -247,13 +270,13 @@ class SettingsManager(context: Context) {
         set(value) = setCachedFloat("clock_text_opacity", value)
 
     fun resetClockTextColor() {
-        clockTextColor = 0xFFFFFFFF.toInt()
+        clockTextColor = getDefaultTextColor()
         clockTextOpacity = 1.0f
     }
 
     // Header Widget Weather Text Color
     var weatherTextColor: Int
-        get() = getCachedInt("weather_text_color", 0xFFFFFFFF.toInt())
+        get() = getCachedInt("weather_text_color", getDefaultTextColor())
         set(value) = setCachedInt("weather_text_color", value)
 
     var weatherTextOpacity: Float
@@ -261,7 +284,7 @@ class SettingsManager(context: Context) {
         set(value) = setCachedFloat("weather_text_opacity", value)
 
     fun resetWeatherTextColor() {
-        weatherTextColor = 0xFFFFFFFF.toInt()
+        weatherTextColor = getDefaultTextColor()
         weatherTextOpacity = 1.0f
     }
 

@@ -256,7 +256,7 @@ class MainActivity : FragmentActivity() {
             statusBarHeight = statusInsets.top
             navBarHeight = navInsets.bottom
 
-            recyclerView.clipToPadding = false
+            recyclerView.clipToPadding = true
             recyclerView.setPadding(
                 recyclerView.paddingLeft,
                 0,
@@ -721,6 +721,27 @@ class MainActivity : FragmentActivity() {
             (settingsManager.searchFabOpacity.coerceIn(0f, 1f) * 255).toInt()
         )
         searchFab.backgroundTintList = android.content.res.ColorStateList.valueOf(fabColor)
+
+        // Dynamic Search Input & Subtitle Text Colors
+        val searchInput = findViewById<android.widget.EditText>(R.id.searchInput)
+        if (searchInput != null) {
+            searchInput.setTextColor(settingsManager.appTextColor)
+            searchInput.setHintTextColor(
+                androidx.core.graphics.ColorUtils.setAlphaComponent(
+                    settingsManager.appTextColor,
+                    (settingsManager.appTextOpacity.coerceIn(0f, 1f) * 0.5f * 255).toInt()
+                )
+            )
+        }
+        val searchSubtitle = findViewById<android.widget.TextView>(R.id.searchSubtitle)
+        if (searchSubtitle != null) {
+            searchSubtitle.setTextColor(
+                androidx.core.graphics.ColorUtils.setAlphaComponent(
+                    settingsManager.appTextColor,
+                    (settingsManager.appTextOpacity.coerceIn(0f, 1f) * 0.5f * 255).toInt()
+                )
+            )
+        }
 
         // Clock & Date Text Color
         val clockColor = androidx.core.graphics.ColorUtils.setAlphaComponent(
