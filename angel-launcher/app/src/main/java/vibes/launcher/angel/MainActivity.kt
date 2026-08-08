@@ -212,7 +212,11 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         vibes.launcher.angel.util.DeviceUtils.applyOrientationLock(this)
-        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        
+        // Enable full edge-to-edge layouts drawing behind system status and navigation bars
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        
+        window.navigationBarColor = 0x01000000
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }
@@ -707,7 +711,7 @@ class MainActivity : FragmentActivity() {
         controller.isAppearanceLightStatusBars = !isDark
         controller.isAppearanceLightNavigationBars = !isDark
 
-        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        window.navigationBarColor = 0x01000000
 
         scrubberView.setTextColor(settingsManager.scrubberTextColor, settingsManager.scrubberTextOpacity)
         
@@ -845,7 +849,7 @@ class MainActivity : FragmentActivity() {
         appListBackgroundView.visibility = View.VISIBLE
         recyclerView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
         scrubberView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        window.navigationBarColor = 0x01000000
         
         appListAdapter.setItemsImmediate(fullAlphabetList)
     }
@@ -873,7 +877,7 @@ class MainActivity : FragmentActivity() {
         appListBackgroundView.visibility = View.GONE
         recyclerView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
         scrubberView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        window.navigationBarColor = 0x01000000
         
         applyWidgetLayoutSettings()
         appListAdapter.setItemsImmediate(favoritesList)
