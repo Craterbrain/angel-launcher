@@ -707,7 +707,7 @@ class MainActivity : FragmentActivity() {
         controller.isAppearanceLightStatusBars = !isDark
         controller.isAppearanceLightNavigationBars = !isDark
 
-        window.navigationBarColor = if (!isDark) getAppListTintColor() else android.graphics.Color.TRANSPARENT
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
 
         scrubberView.setTextColor(settingsManager.scrubberTextColor, settingsManager.scrubberTextOpacity)
         
@@ -845,7 +845,7 @@ class MainActivity : FragmentActivity() {
         appListBackgroundView.visibility = View.VISIBLE
         recyclerView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
         scrubberView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-        window.navigationBarColor = if (!isDarkThemeActive()) tintColor else android.graphics.Color.TRANSPARENT
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
         
         appListAdapter.setItemsImmediate(fullAlphabetList)
     }
@@ -873,7 +873,7 @@ class MainActivity : FragmentActivity() {
         appListBackgroundView.visibility = View.GONE
         recyclerView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
         scrubberView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-        window.navigationBarColor = if (!isDarkThemeActive()) getAppListTintColor() else android.graphics.Color.TRANSPARENT
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
         
         applyWidgetLayoutSettings()
         appListAdapter.setItemsImmediate(favoritesList)
