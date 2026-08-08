@@ -767,15 +767,40 @@ class MainActivity : FragmentActivity() {
         amPmText.setTextColor(clockColor)
         dateText.setTextColor(clockColor)
 
+        if (isDark) {
+            clockText.setShadowLayer(4f, 1f, 2f, 0x80000000.toInt())
+            amPmText.setShadowLayer(4f, 1f, 2f, 0x80000000.toInt())
+            dateText.setShadowLayer(4f, 1f, 2f, 0x80000000.toInt())
+        } else {
+            // Subtle white blur (shadow) behind dark text in Light Mode
+            clockText.setShadowLayer(3f, 0f, 0f, 0xFFFFFFFF.toInt())
+            amPmText.setShadowLayer(3f, 0f, 0f, 0xFFFFFFFF.toInt())
+            dateText.setShadowLayer(3f, 0f, 0f, 0xFFFFFFFF.toInt())
+        }
+
         // Weather & Forecast Text Color
         val weatherColor = androidx.core.graphics.ColorUtils.setAlphaComponent(
             settingsManager.weatherTextColor,
             (settingsManager.weatherTextOpacity.coerceIn(0f, 1f) * 255).toInt()
         )
         weatherTextView?.setTextColor(weatherColor)
+        
+        if (isDark) {
+            weatherTextView?.setShadowLayer(4f, 1f, 2f, 0x80000000.toInt())
+        } else {
+            weatherTextView?.setShadowLayer(3f, 0f, 0f, 0xFFFFFFFF.toInt())
+        }
+
         for (triple in forecastViews) {
             triple.first?.setTextColor(weatherColor)
             triple.third?.setTextColor(weatherColor)
+            if (isDark) {
+                triple.first?.setShadowLayer(4f, 1f, 2f, 0x80000000.toInt())
+                triple.third?.setShadowLayer(4f, 1f, 2f, 0x80000000.toInt())
+            } else {
+                triple.first?.setShadowLayer(3f, 0f, 0f, 0xFFFFFFFF.toInt())
+                triple.third?.setShadowLayer(3f, 0f, 0f, 0xFFFFFFFF.toInt())
+            }
         }
 
         // Edit Mode Banner Color

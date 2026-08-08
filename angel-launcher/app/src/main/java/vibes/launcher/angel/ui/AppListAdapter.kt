@@ -221,6 +221,20 @@ class AppListAdapter(
                 )
                 headerText.text = header.title
                 headerText.setTextColor(cachedTextColor)
+
+                val isDark = when (settingsManager.themeMode) {
+                    1 -> false
+                    2 -> true
+                    else -> {
+                        val uiMode = itemView.context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+                        uiMode == android.content.res.Configuration.UI_MODE_NIGHT_YES
+                    }
+                }
+                if (!isDark) {
+                    headerText.setShadowLayer(3f, 0f, 0f, 0xFFFFFFFF.toInt())
+                } else {
+                    headerText.setShadowLayer(0f, 0f, 0f, 0)
+                }
             }
         }
     }
@@ -259,6 +273,21 @@ class AppListAdapter(
 
             appName.text = app.displayLabel
             appName.setTextColor(cachedTextColor)
+
+            val isDark = when (settingsManager.themeMode) {
+                1 -> false
+                2 -> true
+                else -> {
+                    val uiMode = itemView.context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK
+                    uiMode == android.content.res.Configuration.UI_MODE_NIGHT_YES
+                }
+            }
+            if (!isDark) {
+                appName.setShadowLayer(3f, 0f, 0f, 0xFFFFFFFF.toInt())
+            } else {
+                appName.setShadowLayer(0f, 0f, 0f, 0)
+            }
+
             vibes.launcher.angel.util.IconShapeHelper.applyShapeToView(appIcon, cachedIconShape)
             
             val expectedPackage = app.packageName
