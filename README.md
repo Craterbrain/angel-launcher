@@ -8,7 +8,7 @@
 
 ## 🤖 Built with AI
 
-> **Important Disclosure & Development Story:**  
+> **Important Disclosure**
 > I do **not** know how to write code. This entire project was created using AI pair programming.  
 > * **Google Gemini** did the vast majority of the core architecture, Kotlin/Android development, Jetpack Compose UI, custom vector icons, R8 optimizations, and feature implementations.  
 > * **Anthropic Claude** assisted with codebase auditing, bug finding, edge-case checking, and quality review.  
@@ -35,6 +35,7 @@
 * **🌤️ Live Weather & NWS Forecast**:
   - Live temperature, condition icons, and 7-period weather forecasts powered directly by the National Weather Service (NWS / weather.gov API).
   - GPS device location detection or manual city/state search.
+  - Support for third party weather icons.
 * **🎨 Deep Appearance & Theme Customization**:
   - Light, Dark, and System Default theme modes.
   - Custom color picker with opacity sliders for app text, clock, search bar, and alphabet scrubber.
@@ -46,9 +47,6 @@
 * **🔍 Fast Gesture Scrubber & Search**:
   - Right-edge alphabetical fast-scroll scrubber with haptic touch feedback.
   - Instant fuzzy app search and recently opened apps tray.
-* **🛡️ Glass-Clear System Bars**:
-  - Full edge-to-edge layout drawing behind status and navigation bars.
-  - Built-in System Bar Contrast Enforcement bypass (Android 10+ / API 29–35) for 100% transparent navigation bars without translucent grey scrims.
 * **💾 Backup & Restore**:
   - Export and import all launcher preferences, color themes, hidden apps, and favorite app layouts to a JSON file.
 
