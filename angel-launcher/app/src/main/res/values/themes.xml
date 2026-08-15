@@ -7,6 +7,7 @@
         <item name="android:windowShowWallpaper">true</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
     </style>
 
     <style name="CustomBottomSheetDialog" parent="Theme.Design.BottomSheetDialog">

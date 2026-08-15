@@ -555,29 +555,12 @@ private fun LiveScalePreviewCard(
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = "Live Scaling Preview",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer
-                ) {
-                    Text(
-                        text = "Real-time",
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                }
-            }
+            Text(
+                text = "Preview",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -627,15 +610,32 @@ private fun LiveScalePreviewCard(
     }
 }
 
-private fun getPreviewShape(shapeId: Int): androidx.compose.ui.graphics.Shape {
+private val HexagonShape = androidx.compose.foundation.shape.GenericShape { size, _ ->
+    val w = size.width
+    val h = size.height
+    val cx = w / 2f
+    moveTo(cx, 0f)
+    lineTo(w, h * 0.25f)
+    lineTo(w, h * 0.75f)
+    lineTo(cx, h)
+    lineTo(0f, h * 0.75f)
+    lineTo(0f, h * 0.25f)
+    close()
+}
+
+private fun getShapeForSelector(shapeId: Int): androidx.compose.ui.graphics.Shape {
     return when (shapeId) {
         SettingsManager.SHAPE_CIRCLE -> CircleShape
-        SettingsManager.SHAPE_SQUIRCLE -> RoundedCornerShape(32)
-        SettingsManager.SHAPE_ROUNDED_SQUARE -> RoundedCornerShape(12.dp)
-        SettingsManager.SHAPE_TEARDROP -> RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 24.dp, bottomEnd = 4.dp)
-        SettingsManager.SHAPE_HEXAGON -> RoundedCornerShape(12.dp)
-        else -> RoundedCornerShape(12.dp)
+        SettingsManager.SHAPE_SQUIRCLE -> RoundedCornerShape(percent = 35)
+        SettingsManager.SHAPE_ROUNDED_SQUARE -> RoundedCornerShape(percent = 18)
+        SettingsManager.SHAPE_TEARDROP -> RoundedCornerShape(topStartPercent = 48, topEndPercent = 48, bottomStartPercent = 48, bottomEndPercent = 8)
+        SettingsManager.SHAPE_HEXAGON -> HexagonShape
+        else -> RoundedCornerShape(percent = 8)
     }
+}
+
+private fun getPreviewShape(shapeId: Int): androidx.compose.ui.graphics.Shape {
+    return getShapeForSelector(shapeId)
 }
 
 @Composable
@@ -647,6 +647,8 @@ private fun ShapeSelectionCard(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val shape = getShapeForSelector(shapeId)
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
@@ -661,58 +663,24 @@ private fun ShapeSelectionCard(
                 .padding(horizontal = 10.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Shape visual preview box
+            // Shape visual preview box matching theme colors and shape geometry
             Box(
                 modifier = Modifier
                     .size(36.dp)
                     .background(
                         color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                        shape = when (shapeId) {
-                            SettingsManager.SHAPE_CIRCLE -> CircleShape
-                            SettingsManager.SHAPE_SQUIRCLE -> RoundedCornerShape(11.dp)
-                            SettingsManager.SHAPE_ROUNDED_SQUARE -> RoundedCornerShape(5.dp)
-                            SettingsManager.SHAPE_TEARDROP -> RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 3.dp)
-                            else -> RoundedCornerShape(4.dp)
-                        }
+                        shape = shape
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                if (shapeId == SettingsManager.SHAPE_HEXAGON) {
-                    Canvas(modifier = Modifier.size(24.dp)) {
-                        val w = size.width
-                        val h = size.height
-                        val cx = w / 2f
-                        val cy = h / 2f
-                        val path = androidx.compose.ui.graphics.Path().apply {
-                            moveTo(cx, 0f)
-                            lineTo(w, cy * 0.5f)
-                            lineTo(w, cy * 1.5f)
-                            lineTo(cx, h)
-                            lineTo(0f, cy * 1.5f)
-                            lineTo(0f, cy * 0.5f)
-                            close()
-                        }
-                        drawPath(
-                            path = path,
-                            color = if (isSelected) androidx.compose.ui.graphics.Color.White else androidx.compose.ui.graphics.Color.LightGray
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .background(
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            shape = shape
                         )
-                    }
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .background(
-                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                shape = when (shapeId) {
-                                    SettingsManager.SHAPE_CIRCLE -> CircleShape
-                                    SettingsManager.SHAPE_SQUIRCLE -> RoundedCornerShape(5.dp)
-                                    SettingsManager.SHAPE_ROUNDED_SQUARE -> RoundedCornerShape(2.dp)
-                                    SettingsManager.SHAPE_TEARDROP -> RoundedCornerShape(topStart = 7.dp, topEnd = 7.dp, bottomStart = 7.dp, bottomEnd = 2.dp)
-                                    else -> RoundedCornerShape(2.dp)
-                                }
-                            )
-                    )
-                }
+                )
             }
 
             Spacer(modifier = Modifier.width(8.dp))

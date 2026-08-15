@@ -133,6 +133,8 @@ class MainActivity : FragmentActivity() {
         private const val APPWIDGET_HOST_ID = 2048
         private const val REQUEST_PICK_APPWIDGET = 1001
         private const val REQUEST_CREATE_APPWIDGET = 1002
+        var cachedFavoritesList: List<AppListItem>? = null
+        var cachedFullAlphabetList: List<AppListItem>? = null
     }
 
     private lateinit var clockText: TextView
@@ -218,9 +220,11 @@ class MainActivity : FragmentActivity() {
         // Enable full edge-to-edge layouts drawing behind system status and navigation bars
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         
-        window.navigationBarColor = getNavigationBarColorToApply()
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
+            window.isStatusBarContrastEnforced = false
         }
         setContentView(R.layout.activity_main)
 
@@ -267,12 +271,19 @@ class MainActivity : FragmentActivity() {
                 recyclerView.paddingLeft,
                 0,
                 recyclerView.paddingRight,
-                navInsets.bottom
+                0
             )
             
             val rvParams = recyclerView.layoutParams as android.widget.FrameLayout.LayoutParams
-            rvParams.bottomMargin = 0
+            rvParams.bottomMargin = navInsets.bottom
             recyclerView.layoutParams = rvParams
+
+            val scrubberParams = scrubberView.layoutParams as? android.widget.FrameLayout.LayoutParams
+            if (scrubberParams != null) {
+                scrubberParams.topMargin = statusInsets.top
+                scrubberParams.bottomMargin = navInsets.bottom
+                scrubberView.layoutParams = scrubberParams
+            }
             
             val u = AppListAdapter.getBaseUnit(resources.displayMetrics, 1.0f).toFloat()
             val fabParams = searchFab.layoutParams as android.widget.FrameLayout.LayoutParams
@@ -332,7 +343,8 @@ class MainActivity : FragmentActivity() {
             showAppOptions(app)
         }
 
-        appListAdapter = AppListAdapter(emptyList(), lifecycleScope, iconCacheManager, iconExtractor, null, null, settingsManager, onAppClick, onAppLongClick)
+        val initialItems = if (isStateOneActive) (cachedFullAlphabetList ?: emptyList()) else (cachedFavoritesList ?: emptyList())
+        appListAdapter = AppListAdapter(initialItems, lifecycleScope, iconCacheManager, iconExtractor, null, null, settingsManager, onAppClick, onAppLongClick)
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.itemAnimator = null
         recyclerView.adapter = appListAdapter
@@ -722,13 +734,7 @@ class MainActivity : FragmentActivity() {
                     typedValue.data
                 }
             }
-            else -> {
-                if (isDark) {
-                    android.graphics.Color.TRANSPARENT
-                } else {
-                    0x01000000
-                }
-            }
+            else -> android.graphics.Color.TRANSPARENT
         }
     }
 
@@ -1406,6 +1412,7 @@ class MainActivity : FragmentActivity() {
                     if (hasMoved) {
                         // Persist the newly arranged favorites order
                         favoritesList = appListAdapter.items.toList()
+                        cachedFavoritesList = favoritesList
                         val newOrder = favoritesList.filterIsInstance<AppListItem.App>().map { it.appModel.packageName }
                         settingsManager.favoriteOrder = newOrder
                     }
@@ -1695,7 +1702,8 @@ class MainActivity : FragmentActivity() {
                 allFavApps
             }
             
-            favoritesList = sortedFavApps.map { AppListItem.App(it) } + listOf(AppListItem.Header(""))
+            favoritesList = sortedFavApps.map { AppListItem.App(it) }
+            cachedFavoritesList = favoritesList
             
             // Build full alphabet list (State 1)
             val tempFullAlphabetList = mutableListOf<AppListItem>()
@@ -1715,13 +1723,15 @@ class MainActivity : FragmentActivity() {
             tempFullAlphabetList.add(AppListItem.App(settingsApp))
             tempFullAlphabetList.add(AppListItem.Header(""))
             fullAlphabetList = tempFullAlphabetList
+            cachedFullAlphabetList = fullAlphabetList
             
-            // Set initial state
+            // Set initial state using DiffUtil to prevent flicker
             if (!isDragging) {
+                val useDiff = appListAdapter.items.isNotEmpty()
                 if (isStateOneActive) {
-                    appListAdapter.updateItems(fullAlphabetList)
+                    appListAdapter.updateItems(fullAlphabetList, useDiff = useDiff)
                 } else {
-                    appListAdapter.updateItems(favoritesList)
+                    appListAdapter.updateItems(favoritesList, useDiff = useDiff)
                 }
             }
             
