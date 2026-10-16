@@ -363,6 +363,38 @@ fun ModernSettingsItem(
 }
 
 @Composable
+private fun SwitchRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onCheckedChange(!checked) }
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
 fun UiScreen(settingsManager: SettingsManager) {
     var globalScale by remember { mutableFloatStateOf(settingsManager.globalScale) }
     var iconScale by remember { mutableFloatStateOf(settingsManager.iconScale) }
@@ -1790,38 +1822,15 @@ fun WidgetScreen(settingsManager: SettingsManager) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                val newValue = !showAmPm
-                                showAmPm = newValue
-                                settingsManager.showAmPm = newValue
-                            }
-                            .padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Show AM / PM Indicator",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "Applies to 12-hour clock format",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                    SwitchRow(
+                        title = "Show AM / PM Indicator",
+                        subtitle = "Applies to 12-hour clock format",
+                        checked = showAmPm,
+                        onCheckedChange = {
+                            showAmPm = it
+                            settingsManager.showAmPm = it
                         }
-                        Switch(
-                            checked = showAmPm,
-                            onCheckedChange = {
-                                showAmPm = it
-                                settingsManager.showAmPm = it
-                            }
-                        )
-                    }
+                    )
 
                     Spacer(modifier = Modifier.height(16.dp))
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
@@ -1835,38 +1844,15 @@ fun WidgetScreen(settingsManager: SettingsManager) {
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                val newValue = !showDate
-                                showDate = newValue
-                                settingsManager.showDate = newValue
-                            }
-                            .padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Show Date",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "Display calendar date beneath the clock",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                    SwitchRow(
+                        title = "Show Date",
+                        subtitle = "Display calendar date beneath the clock",
+                        checked = showDate,
+                        onCheckedChange = {
+                            showDate = it
+                            settingsManager.showDate = it
                         }
-                        Switch(
-                            checked = showDate,
-                            onCheckedChange = {
-                                showDate = it
-                                settingsManager.showDate = it
-                            }
-                        )
-                    }
+                    )
 
                     AnimatedVisibility(
                         visible = showDate,
@@ -1937,38 +1923,15 @@ fun WidgetScreen(settingsManager: SettingsManager) {
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                val newValue = !showWeather
-                                showWeather = newValue
-                                settingsManager.showWeather = newValue
-                            }
-                            .padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Show Weather & Forecast",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "Live updates and 5-day daily forecast",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                    SwitchRow(
+                        title = "Show Weather & Forecast",
+                        subtitle = "Live updates and 5-day daily forecast",
+                        checked = showWeather,
+                        onCheckedChange = {
+                            showWeather = it
+                            settingsManager.showWeather = it
                         }
-                        Switch(
-                            checked = showWeather,
-                            onCheckedChange = {
-                                showWeather = it
-                                settingsManager.showWeather = it
-                            }
-                        )
-                    }
+                    )
 
                     AnimatedVisibility(
                         visible = showWeather,
@@ -1981,39 +1944,15 @@ fun WidgetScreen(settingsManager: SettingsManager) {
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                             )
                             // 5-Day Forecast toggle
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickable {
-                                        val newValue = !show5DayForecast
-                                        show5DayForecast = newValue
-                                        settingsManager.show5DayForecast = newValue
-                                    }
-                                    .padding(vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "5-Day Forecast",
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = "Show extended 5-day weather forecast card",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                            SwitchRow(
+                                title = "5-Day Forecast",
+                                subtitle = "Show extended 5-day weather forecast card",
+                                checked = show5DayForecast,
+                                onCheckedChange = {
+                                    show5DayForecast = it
+                                    settingsManager.show5DayForecast = it
                                 }
-                                Switch(
-                                    checked = show5DayForecast,
-                                    onCheckedChange = {
-                                        show5DayForecast = it
-                                        settingsManager.show5DayForecast = it
-                                    }
-                                )
-                            }
+                            )
 
                             Spacer(modifier = Modifier.height(14.dp))
                             var contactEmail by remember { mutableStateOf(settingsManager.nwsContactEmail) }

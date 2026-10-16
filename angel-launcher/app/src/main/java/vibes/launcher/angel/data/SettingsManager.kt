@@ -264,7 +264,6 @@ class SettingsManager(private val context: Context) {
     }
 
     // Search FAB Color
-    // Search FAB Color
     var searchFabColor: Int
         get() = getCachedInt("search_fab_color", 0xFF2C2C2C.toInt())
         set(value) = setCachedInt("search_fab_color", value)
@@ -321,37 +320,15 @@ class SettingsManager(private val context: Context) {
     }
 
     fun resetAllColors() {
-        val keysToRemove = listOf(
-            "app_list_monet_enabled", "app_list_custom_color", "app_list_tint_opacity",
-            "app_text_color", "app_text_opacity", "scrubber_text_color",
-            "scrubber_text_opacity", "search_bar_color", "search_bar_opacity",
-            "search_dim_color", "search_dim_opacity", "search_fab_color",
-            "search_fab_opacity", "clock_text_color", "clock_text_opacity",
-            "weather_text_color", "weather_text_opacity",
-            "edit_mode_banner_color", "edit_mode_banner_opacity"
-        )
-        keysToRemove.forEach { memCache.remove(it) }
-        prefs.edit()
-            .putBoolean("app_list_monet_enabled", true)
-            .putInt("app_list_custom_color", 0xFF000000.toInt())
-            .putFloat("app_list_tint_opacity", 0.12f)
-            .putInt("app_text_color", 0xFFFFFFFF.toInt())
-            .putFloat("app_text_opacity", 1.0f)
-            .putInt("scrubber_text_color", 0xFFFFFFFF.toInt())
-            .putFloat("scrubber_text_opacity", 1.0f)
-            .putInt("search_bar_color", 0xFFFFFFFF.toInt())
-            .putFloat("search_bar_opacity", 0.20f)
-            .putInt("search_dim_color", 0xFF000000.toInt())
-            .putFloat("search_dim_opacity", 0.80f)
-            .putInt("search_fab_color", 0xFF2C2C2C.toInt())
-            .putFloat("search_fab_opacity", 1.0f)
-            .putInt("clock_text_color", 0xFFFFFFFF.toInt())
-            .putFloat("clock_text_opacity", 1.0f)
-            .putInt("weather_text_color", 0xFFFFFFFF.toInt())
-            .putFloat("weather_text_opacity", 1.0f)
-            .putInt("edit_mode_banner_color", 0xFF006874.toInt())
-            .putFloat("edit_mode_banner_opacity", 0.90f)
-            .apply()
+        resetAppListTint()
+        resetAppTextColor()
+        resetScrubberTextColor()
+        resetSearchBarColor()
+        resetSearchDimColor()
+        resetSearchFabColor()
+        resetClockTextColor()
+        resetWeatherTextColor()
+        resetEditModeBannerColor()
     }
 
 // --- Launcher Widget Settings ---
