@@ -103,7 +103,7 @@ class IconCacheManager(context: Context) {
                 }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.w("IconCacheManager", "Disk cache operation failed", e)
         }
     }
 
@@ -114,7 +114,7 @@ class IconCacheManager(context: Context) {
         try {
             diskCacheDir.listFiles()?.forEach { it.delete() }
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.w("IconCacheManager", "Disk cache operation failed", e)
         }
     }
 }

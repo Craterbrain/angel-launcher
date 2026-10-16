@@ -49,7 +49,7 @@
             android:name=".SettingsActivity"
             android:label="Angel Launcher Settings"
             android:theme="@style/Theme.AngelLauncher"
-            android:exported="true" />
+            android:exported="false" />
 
 
         <service

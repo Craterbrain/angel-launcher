@@ -150,10 +150,11 @@ class ScrubberView @JvmOverloads constructor(
     private fun handleTouch(event: MotionEvent, startY: Float, usableHeight: Float) {
         animator?.cancel()
         waveAmplitude = maxAmplitude
-        touchY = event.y.coerceIn(startY, startY + usableHeight)
+        val y = event.y.coerceIn(startY, startY + usableHeight)
+        touchY = y
         
         val itemHeight = usableHeight / letters.size
-        var index = ((touchY!! - startY) / itemHeight).toInt()
+        var index = ((y - startY) / itemHeight).toInt()
         index = index.coerceIn(0, letters.size - 1)
         
         if (index != lastSelectedIndex) {
