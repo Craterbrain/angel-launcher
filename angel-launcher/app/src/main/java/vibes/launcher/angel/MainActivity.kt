@@ -120,6 +120,9 @@ class MainActivity : FragmentActivity() {
     private var forecastContainerView: View? = null
     private var weatherIconCurrentView: android.widget.ImageView? = null
     private var weatherTextView: android.widget.TextView? = null
+    private var weatherTempView: android.widget.TextView? = null
+    private var weatherConditionView: android.widget.TextView? = null
+    private var precipViews: List<android.widget.TextView?> = emptyList()
     private var forecastViews: List<Triple<android.widget.TextView?, android.widget.ImageView?, android.widget.TextView?>> = emptyList()
     
     private var favoritesList = listOf<AppListItem>()
@@ -148,6 +151,8 @@ class MainActivity : FragmentActivity() {
     private var isDragging = false
 
     companion object {
+        /** Forecast days below this chance of precipitation show no rain line. */
+        private const val RAIN_CHANCE_MIN_PERCENT = 20
         private const val APPWIDGET_HOST_ID = 2048
         private const val REQUEST_PICK_APPWIDGET = 1001
         private const val REQUEST_CREATE_APPWIDGET = 1002
@@ -843,12 +848,16 @@ class MainActivity : FragmentActivity() {
             settingsManager.weatherTextColor,
             (settingsManager.weatherTextOpacity.coerceIn(0f, 1f) * 255).toInt()
         )
-        weatherTextView?.setTextColor(weatherColor)
-        
-        if (isDark) {
-            weatherTextView?.setShadowLayer(4f, 1f, 2f, 0x80000000.toInt())
-        } else {
-            weatherTextView?.setShadowLayer(3f, 0f, 0f, 0xFFFFFFFF.toInt())
+        val currentWeatherViews = listOf(weatherTextView, weatherTempView, weatherConditionView)
+        currentWeatherViews.forEach { it?.setTextColor(weatherColor) }
+        precipViews.forEach { it?.setTextColor(weatherColor) }
+
+        for (v in currentWeatherViews + precipViews) {
+            if (isDark) {
+                v?.setShadowLayer(4f, 1f, 2f, 0x80000000.toInt())
+            } else {
+                v?.setShadowLayer(3f, 0f, 0f, 0xFFFFFFFF.toInt())
+            }
         }
 
         for (triple in forecastViews) {
@@ -1000,6 +1009,13 @@ class MainActivity : FragmentActivity() {
         forecastContainerView = findViewById(R.id.forecastContainer)
         weatherIconCurrentView = findViewById(R.id.weatherIconCurrent)
         weatherTextView = findViewById(R.id.weatherText)
+        weatherTempView = findViewById(R.id.weatherTempText)
+        weatherConditionView = findViewById(R.id.weatherConditionText)
+        precipViews = listOf(
+            findViewById(R.id.forecastDay1Precip), findViewById(R.id.forecastDay2Precip),
+            findViewById(R.id.forecastDay3Precip), findViewById(R.id.forecastDay4Precip),
+            findViewById(R.id.forecastDay5Precip)
+        )
         forecastViews = listOf(
             Triple(findViewById(R.id.forecastDay1Name), findViewById(R.id.forecastDay1Icon), findViewById(R.id.forecastDay1Temp)),
             Triple(findViewById(R.id.forecastDay2Name), findViewById(R.id.forecastDay2Icon), findViewById(R.id.forecastDay2Temp)),
@@ -1166,7 +1182,9 @@ class MainActivity : FragmentActivity() {
                 val iconRes = WeatherIconHelper.getWeatherIconRes(cached.currentShortForecast)
                 weatherIconCurrent.setImageResource(iconRes)
             }
-            weatherText.text = "${cached.cityName} ${cached.currentTemp}°F"
+            weatherTempView?.text = "${cached.currentTemp}°"
+            weatherConditionView?.text = cached.currentShortForecast
+            weatherText.text = cached.feelsLike?.let { "${cached.cityName} · Feels $it°" } ?: cached.cityName
 
             for (i in forecastViews.indices) {
                 val (nameView, iconView, tempView) = forecastViews[i]
@@ -1181,12 +1199,23 @@ class MainActivity : FragmentActivity() {
                         iconView?.setImageResource(dayIconRes)
                     }
                     tempView?.text = "${d.highTemp}°/${d.lowTemp}°"
+                    precipViews.getOrNull(i)?.let { pv ->
+                        val chance = d.precipChance
+                        if (chance != null && chance >= RAIN_CHANCE_MIN_PERCENT) {
+                            pv.text = "💧 $chance%"
+                            pv.visibility = View.VISIBLE
+                        } else {
+                            pv.visibility = View.INVISIBLE
+                        }
+                    }
                 }
             }
         } else {
             // Show loading placeholder on first launch when no cache exists yet
             weatherIconCurrent.setImageResource(R.drawable.ic_weather_temp)
             weatherText.text = "Loading weather…"
+            weatherTempView?.text = ""
+            weatherConditionView?.text = ""
             forecastContainer.visibility = View.GONE
         }
     }
@@ -1197,6 +1226,8 @@ class MainActivity : FragmentActivity() {
             if (settingsManager.getCachedWeatherData() == null) {
                 weatherIconCurrentView?.setImageResource(R.drawable.ic_weather_alert)
                 weatherTextView?.text = "Add contact email in Settings"
+                weatherTempView?.text = ""
+                weatherConditionView?.text = ""
                 forecastContainerView?.visibility = View.GONE
             }
             return
@@ -1233,6 +1264,8 @@ class MainActivity : FragmentActivity() {
                     if (settingsManager.getCachedWeatherData() == null) {
                         weatherIconCurrentView?.setImageResource(R.drawable.ic_weather_location)
                         weatherTextView?.text = "Tap to set location"
+                        weatherTempView?.text = ""
+                        weatherConditionView?.text = ""
                         forecastContainerView?.visibility = View.GONE
                     }
                 }
@@ -1254,6 +1287,8 @@ class MainActivity : FragmentActivity() {
                     if (settingsManager.getCachedWeatherData() == null) {
                         weatherIconCurrentView?.setImageResource(R.drawable.ic_weather_alert)
                         weatherTextView?.text = "Tap to retry weather"
+                        weatherTempView?.text = ""
+                        weatherConditionView?.text = ""
                         forecastContainerView?.visibility = View.GONE
                     }
                 }

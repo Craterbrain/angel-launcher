@@ -511,7 +511,8 @@ class SettingsManager(private val context: Context) {
                         conditionEmoji = d.getString("conditionEmoji"),
                         highTemp = d.getInt("highTemp"),
                         lowTemp = d.getInt("lowTemp"),
-                        shortForecast = d.getString("shortForecast")
+                        shortForecast = d.getString("shortForecast"),
+                        precipChance = if (d.has("precipChance")) d.getInt("precipChance") else null
                     )
                 )
             }
@@ -522,7 +523,9 @@ class SettingsManager(private val context: Context) {
                 currentConditionEmoji = currentEmoji,
                 currentShortForecast = currentShortForecast,
                 dailyForecasts = dailyList,
-                timestamp = timestamp
+                timestamp = timestamp,
+                feelsLike = if (obj.has("feelsLike")) obj.getInt("feelsLike") else null,
+                windMph = if (obj.has("windMph")) obj.getInt("windMph") else null
             )
             memoryCachedWeatherData = parsed
             parsed
@@ -541,6 +544,8 @@ class SettingsManager(private val context: Context) {
                 put("currentConditionEmoji", data.currentConditionEmoji)
                 put("currentShortForecast", data.currentShortForecast)
                 put("timestamp", data.timestamp)
+                data.feelsLike?.let { put("feelsLike", it) }
+                data.windMph?.let { put("windMph", it) }
 
                 val arr = org.json.JSONArray()
                 for (d in data.dailyForecasts) {
@@ -550,6 +555,7 @@ class SettingsManager(private val context: Context) {
                         put("highTemp", d.highTemp)
                         put("lowTemp", d.lowTemp)
                         put("shortForecast", d.shortForecast)
+                        d.precipChance?.let { put("precipChance", it) }
                     }
                     arr.put(dObj)
                 }
