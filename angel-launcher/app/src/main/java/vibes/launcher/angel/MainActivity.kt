@@ -230,6 +230,9 @@ class MainActivity : FragmentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // The bottom sheets take callbacks in their constructors, so the framework cannot re-create
+        // them (no zero-arg constructor). Drop saved fragment state or recreation/process death crashes.
+        savedInstanceState?.remove("android:support:fragments")
         super.onCreate(savedInstanceState)
         vibes.launcher.angel.util.DeviceUtils.applyOrientationLock(this)
         
