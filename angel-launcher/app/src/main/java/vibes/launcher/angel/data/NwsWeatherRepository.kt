@@ -23,7 +23,9 @@ data class DailyForecast(
     val conditionEmoji: String,
     val highTemp: Int,
     val lowTemp: Int,
-    val shortForecast: String
+    val shortForecast: String,
+    /** Highest probability of precipitation across the day's periods, or null if NWS gave none. */
+    val precipChance: Int? = null
 )
 
 data class WeatherData(
@@ -33,7 +35,10 @@ data class WeatherData(
     val currentConditionEmoji: String,
     val currentShortForecast: String,
     val dailyForecasts: List<DailyForecast>,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    /** Wind chill / heat index in °F from the latest observation; null when absent or ~equal to [currentTemp]. */
+    val feelsLike: Int? = null,
+    val windMph: Int? = null
 )
 
 data class NwsPeriod(
@@ -44,8 +49,14 @@ data class NwsPeriod(
     val isDaytime: Boolean,
     val shortForecast: String,
     val detailedForecast: String,
-    val iconUrl: String
+    val iconUrl: String,
+    val precipChance: Int? = null
 )
+
+/** What the gridpoint lookup tells us about a location. */
+data class NwsGridpoint(val forecastUrl: String, val city: String, val state: String, val stationsUrl: String?)
+
+private data class NwsObservation(val tempF: Int, val feelsLikeF: Int?, val windMph: Int?)
 
 /** Non-2xx response from api.weather.gov. */
 class NwsHttpException(val code: Int) : Exception(
@@ -106,6 +117,8 @@ class NwsWeatherRepository(private val context: Context) {
             }
         }
 
+        private const val OBSERVATION_MAX_AGE_MS = 3 * 3600_000L
+
         fun invalidateMemoryCache() {
             memoryCache = null
         }
@@ -134,8 +147,8 @@ class NwsWeatherRepository(private val context: Context) {
                 return@withContext Result.failure(gridpointResult.exceptionOrNull() ?: Exception("Failed to fetch gridpoint"))
             }
 
-            val (forecastUrl, city, state) = gridpointResult.getOrThrow()
-            val forecastResult = fetchForecast(forecastUrl)
+            val gridpoint = gridpointResult.getOrThrow()
+            val forecastResult = fetchForecast(gridpoint.forecastUrl)
             if (forecastResult.isFailure) {
                 return@withContext Result.failure(forecastResult.exceptionOrNull() ?: Exception("Failed to fetch forecast"))
             }
@@ -146,20 +159,24 @@ class NwsWeatherRepository(private val context: Context) {
             }
 
             val firstPeriod = periods.first()
-            val currentTemp = firstPeriod.temperature
+            // The forecast's first period is a high/low, not what it is outside now; prefer a station reading.
+            val observation = fetchObservation(gridpoint.stationsUrl)
+            val currentTemp = observation?.tempF ?: firstPeriod.temperature
             val currentCondition = firstPeriod.shortForecast
             val currentEmoji = getConditionEmoji(currentCondition, firstPeriod.isDaytime)
 
             val dailyForecasts = processPeriodsToDaily(periods)
 
             val weatherData = WeatherData(
-                cityName = city,
-                state = state,
+                cityName = gridpoint.city,
+                state = gridpoint.state,
                 currentTemp = currentTemp,
                 currentConditionEmoji = currentEmoji,
                 currentShortForecast = currentCondition,
                 dailyForecasts = dailyForecasts,
-                timestamp = System.currentTimeMillis()
+                timestamp = System.currentTimeMillis(),
+                feelsLike = observation?.feelsLikeF,
+                windMph = observation?.windMph
             )
 
             memoryCache = weatherData
@@ -203,7 +220,7 @@ class NwsWeatherRepository(private val context: Context) {
         throw lastException ?: IOException("Network request failed")
     }
 
-    suspend fun fetchGridpoint(lat: Double, lon: Double): Result<Triple<String, String, String>> = withContext(Dispatchers.IO) {
+    suspend fun fetchGridpoint(lat: Double, lon: Double): Result<NwsGridpoint> = withContext(Dispatchers.IO) {
         val latStr = String.format(Locale.US, "%.4f", lat)
         val lonStr = String.format(Locale.US, "%.4f", lon)
         val url = "https://api.weather.gov/points/$latStr,$lonStr"
@@ -240,7 +257,7 @@ class NwsWeatherRepository(private val context: Context) {
                 }
             }
 
-            Result.success(Triple(forecastUrl, city, state))
+            Result.success(NwsGridpoint(forecastUrl, city, state, properties.optString("observationStations").ifEmpty { null }))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -279,7 +296,9 @@ class NwsWeatherRepository(private val context: Context) {
                         isDaytime = p.optBoolean("isDaytime", true),
                         shortForecast = p.optString("shortForecast", ""),
                         detailedForecast = p.optString("detailedForecast", ""),
-                        iconUrl = p.optString("icon", "")
+                        iconUrl = p.optString("icon", ""),
+                        precipChance = p.optJSONObject("probabilityOfPrecipitation")
+                            ?.takeIf { !it.isNull("value") }?.optInt("value")
                     )
                 )
             }
@@ -304,6 +323,7 @@ class NwsWeatherRepository(private val context: Context) {
             var high = p1.temperature
             var low = p1.temperature
             var condition = p1.shortForecast
+            var precip = p1.precipChance
 
             if (idx + 1 < periods.size) {
                 val p2 = periods[idx + 1]
@@ -311,11 +331,13 @@ class NwsWeatherRepository(private val context: Context) {
                     // p1 is Day, p2 is Night — consume both
                     high = p1.temperature
                     low = p2.temperature
+                    precip = maxOfNullable(precip, p2.precipChance)
                     idx += 2
                 } else if (!isDay && p2.isDaytime) {
                     // p1 is Night, p2 is next Day — consume both to avoid duplicate day
                     low = p1.temperature
                     high = p2.temperature
+                    precip = maxOfNullable(precip, p2.precipChance)
                     idx += 2
                 } else {
                     idx += 1
@@ -337,12 +359,90 @@ class NwsWeatherRepository(private val context: Context) {
                     conditionEmoji = emoji,
                     highTemp = high,
                     lowTemp = low,
-                    shortForecast = condition
+                    shortForecast = condition,
+                    precipChance = precip
                 )
             )
         }
 
         return dailyList
+    }
+
+    private fun maxOfNullable(a: Int?, b: Int?): Int? = if (a == null) b else if (b == null) a else maxOf(a, b)
+
+    // --- Latest station observation (real current temperature, feels-like, wind) ---
+
+    private fun stationIds(stationsUrl: String): List<String> {
+        val prefs = context.getSharedPreferences("angel_launcher_prefs", Context.MODE_PRIVATE)
+        val cached = prefs.getString("nws_stations", null)
+        if (cached != null && cached.startsWith("$stationsUrl|")) {
+            return cached.substringAfter('|').split(',').filter { it.isNotEmpty() }
+        }
+        return emptyList()
+    }
+
+    private suspend fun fetchStationIds(stationsUrl: String): List<String> {
+        val cached = stationIds(stationsUrl)
+        if (cached.isNotEmpty()) return cached
+        val response = executeWithRetry(newRequest(stationsUrl))
+        if (!response.isSuccessful) {
+            response.close()
+            return emptyList()
+        }
+        val body = response.use { it.body?.string() } ?: return emptyList()
+        val features = JSONObject(body).optJSONArray("features") ?: return emptyList()
+        val ids = (0 until minOf(features.length(), 3)).mapNotNull {
+            features.getJSONObject(it).optJSONObject("properties")?.optString("stationIdentifier")?.ifEmpty { null }
+        }
+        if (ids.isNotEmpty()) {
+            context.getSharedPreferences("angel_launcher_prefs", Context.MODE_PRIVATE).edit()
+                .putString("nws_stations", "$stationsUrl|${ids.joinToString(",")}").apply()
+        }
+        return ids
+    }
+
+    /** Best-effort: any failure just means the caller falls back to the forecast temperature. */
+    private suspend fun fetchObservation(stationsUrl: String?): NwsObservation? = withContext(Dispatchers.IO) {
+        if (stationsUrl == null) return@withContext null
+        try {
+            for (id in fetchStationIds(stationsUrl)) {
+                val response = executeWithRetry(newRequest("https://api.weather.gov/stations/$id/observations/latest"))
+                if (!response.isSuccessful) {
+                    response.close()
+                    continue
+                }
+                val body = response.use { it.body?.string() } ?: continue
+                val props = JSONObject(body).optJSONObject("properties") ?: continue
+
+                val stamp = props.optString("timestamp")
+                val ageMs = runCatching {
+                    System.currentTimeMillis() - java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).parse(stamp)!!.time
+                }.getOrNull()
+                if (ageMs == null || ageMs > OBSERVATION_MAX_AGE_MS) continue
+
+                val tempC = props.optJSONObject("temperature")?.takeIf { !it.isNull("value") }?.optDouble("value") ?: continue
+                val tempF = Math.round(tempC * 9.0 / 5.0 + 32.0).toInt()
+
+                val feelsC = listOf("heatIndex", "windChill").firstNotNullOfOrNull { key ->
+                    props.optJSONObject(key)?.takeIf { !it.isNull("value") }?.optDouble("value")
+                }
+                val feelsF = feelsC?.let { Math.round(it * 9.0 / 5.0 + 32.0).toInt() }
+                    ?.takeIf { Math.abs(it - tempF) >= 2 }
+
+                val wind = props.optJSONObject("windSpeed")?.takeIf { !it.isNull("value") }
+                val windMph = wind?.let {
+                    val v = it.optDouble("value")
+                    val factor = if (it.optString("unitCode").contains("m_s-1")) 2.23694 else 0.621371
+                    Math.round(v * factor).toInt()
+                }
+                return@withContext NwsObservation(tempF, feelsF, windMph)
+            }
+            null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
     }
 
     private fun formatDayName(rawName: String, isFirst: Boolean): String {
