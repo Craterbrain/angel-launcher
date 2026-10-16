@@ -2244,6 +2244,25 @@ fun WidgetScreen(settingsManager: SettingsManager) {
                             }
 
                             Spacer(modifier = Modifier.height(14.dp))
+                            var contactEmail by remember { mutableStateOf(settingsManager.nwsContactEmail) }
+                            OutlinedTextField(
+                                value = contactEmail,
+                                onValueChange = {
+                                    contactEmail = it
+                                    settingsManager.nwsContactEmail = it
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                label = { Text("Contact email (optional)") },
+                                supportingText = {
+                                    Text("The National Weather Service asks API clients to include a contact address. It is sent only in the weather request's User-Agent header.")
+                                },
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Email
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.height(14.dp))
                             Text(
                                 text = "Location Source",
                                 style = MaterialTheme.typography.labelLarge,

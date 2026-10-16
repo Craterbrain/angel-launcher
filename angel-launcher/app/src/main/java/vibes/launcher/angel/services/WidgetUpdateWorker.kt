@@ -4,9 +4,11 @@ import android.content.Context
 import android.content.Intent
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import vibes.launcher.angel.data.NwsHttpException
 import vibes.launcher.angel.data.NwsWeatherRepository
 import vibes.launcher.angel.data.SettingsManager
 import vibes.launcher.angel.util.LocationHelper
+import java.io.IOException
 
 class WidgetUpdateWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
@@ -46,13 +48,9 @@ class WidgetUpdateWorker(context: Context, params: WorkerParameters) : Coroutine
 
             Result.success()
         } else {
-            val exception = result.exceptionOrNull()
-            val msg = exception?.message ?: ""
-            when {
-                msg.contains("429") -> Result.retry()  // Rate limited
-                msg.contains("50") -> Result.retry()  // Server error (500-599)
-                msg.contains("timeout", ignoreCase = true) -> Result.retry()
-                msg.contains("Unable to resolve", ignoreCase = true) -> Result.retry()
+            when (val exception = result.exceptionOrNull()) {
+                is NwsHttpException -> if (exception.isRetryable) Result.retry() else Result.failure()
+                is IOException -> Result.retry() // Timeouts, DNS failures, dropped connections
                 else -> Result.failure()
             }
         }

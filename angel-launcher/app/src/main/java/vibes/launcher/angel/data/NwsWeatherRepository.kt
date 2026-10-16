@@ -3,14 +3,20 @@ package vibes.launcher.angel.data
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.Dns
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.suspendCancellableCoroutine
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.Response
 import org.json.JSONObject
-import java.net.InetAddress
-import java.net.UnknownHostException
+import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 data class DailyForecast(
     val dayName: String,
@@ -41,141 +47,41 @@ data class NwsPeriod(
     val iconUrl: String
 )
 
+/** Non-2xx response from api.weather.gov. */
+class NwsHttpException(val code: Int) : Exception(
+    if (code == 429) "NWS Rate Limit Reached (429)" else "NWS API Error HTTP $code"
+) {
+    val isRetryable: Boolean get() = code == 429 || code in 500..599
+}
+
 class NwsWeatherRepository(private val context: Context) {
 
     companion object {
-        private class ResilientDns : Dns {
-            private val sharedRandom = java.util.Random()
-
-            override fun lookup(hostname: String): List<InetAddress> {
-                try {
-                    val addresses = Dns.SYSTEM.lookup(hostname)
-                    if (addresses.isNotEmpty()) return addresses
-                } catch (e: Exception) {
-                    android.util.Log.w("AngelWeather", "Dns.SYSTEM failed for $hostname: ${e.message}")
-                }
-
-                val publicDnsServers = listOf("8.8.8.8", "1.1.1.1", "9.9.9.9")
-                for (dnsIp in publicDnsServers) {
-                    try {
-                        val addrs = queryDnsUdp(hostname, dnsIp)
-                        if (addrs.isNotEmpty()) {
-                            android.util.Log.d("AngelWeather", "Resolved $hostname via $dnsIp: $addrs")
-                            return addrs
-                        }
-                    } catch (e: Exception) {
-                        android.util.Log.w("AngelWeather", "queryDnsUdp failed for $dnsIp: ${e.message}", e)
-                    }
-                }
-
-                throw UnknownHostException("Unable to resolve host \"$hostname\"")
-            }
-
-            private fun queryDnsUdp(hostname: String, dnsServerIp: String): List<InetAddress> {
-                val socket = java.net.DatagramSocket()
-                try {
-                    socket.soTimeout = 3000
-                    val dnsServer = InetAddress.getByName(dnsServerIp)
-
-                    val baos = java.io.ByteArrayOutputStream()
-                    val dos = java.io.DataOutputStream(baos)
-
-                    val txId = (sharedRandom.nextInt(65536)).toShort()
-                    dos.writeShort(txId.toInt())
-                    dos.writeShort(0x0100) // Standard query + recursion desired
-                    dos.writeShort(1) // 1 question
-                    dos.writeShort(0)
-                    dos.writeShort(0)
-                    dos.writeShort(0)
-
-                    for (part in hostname.split(".")) {
-                        val bytes = part.toByteArray(Charsets.US_ASCII)
-                        dos.writeByte(bytes.size)
-                        dos.write(bytes)
-                    }
-                    dos.writeByte(0)
-                    dos.writeShort(1) // Type A
-                    dos.writeShort(1) // Class IN
-                    dos.flush()
-
-                    val queryBytes = baos.toByteArray()
-                    val packet = java.net.DatagramPacket(queryBytes, queryBytes.size, dnsServer, 53)
-                    socket.send(packet)
-
-                    val buf = ByteArray(1024)
-                    val respPacket = java.net.DatagramPacket(buf, buf.size)
-                    socket.receive(respPacket)
-
-                    val dis = java.io.DataInputStream(java.io.ByteArrayInputStream(respPacket.data, 0, respPacket.length))
-                    dis.readShort() // ID
-                    dis.readShort() // Flags
-                    val qdCount = dis.readShort().toInt() and 0xFFFF
-                    val anCount = dis.readShort().toInt() and 0xFFFF
-                    dis.readShort() // NS
-                    dis.readShort() // AR
-
-                    // Skip Question section
-                    for (q in 0 until qdCount) {
-                        while (true) {
-                            val len = dis.readByte().toInt() and 0xFF
-                            if (len == 0) break
-                            if (len >= 192) {
-                                dis.readByte()
-                                break
-                            }
-                            dis.skipBytes(len)
-                        }
-                        dis.skipBytes(4) // QTYPE, QCLASS
-                    }
-
-                    val addresses = mutableListOf<InetAddress>()
-                    // Parse Answer section
-                    for (a in 0 until anCount) {
-                        var len = dis.readByte().toInt() and 0xFF
-                        while (true) {
-                            if (len == 0) break
-                            if (len >= 192) {
-                                dis.readByte()
-                                break
-                            }
-                            dis.skipBytes(len)
-                            len = dis.readByte().toInt() and 0xFF
-                        }
-                        val type = dis.readShort().toInt() and 0xFFFF
-                        dis.readShort() // Class
-                        dis.readInt() // TTL
-                        val dataLen = dis.readShort().toInt() and 0xFFFF
-                        if (type == 1 && dataLen == 4) {
-                            val ipBytes = ByteArray(4)
-                            dis.readFully(ipBytes)
-                            try {
-                                addresses.add(InetAddress.getByAddress(hostname, ipBytes))
-                            } catch (e: Exception) {}
-                        } else {
-                            dis.skipBytes(dataLen)
-                        }
-                    }
-                    return addresses
-                } finally {
-                    socket.close()
-                }
-            }
-        }
-
         /** Singleton OkHttpClient — reuses thread pool and connection pool across all requests */
         private val client: OkHttpClient = OkHttpClient.Builder()
-            .dns(ResilientDns())
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
-            .addInterceptor { chain ->
-                val original = chain.request()
-                val requestWithUserAgent = original.newBuilder()
-                    .header("User-Agent", vibes.launcher.angel.BuildConfig.NWS_USER_AGENT)
-                    .header("Accept", "application/geo+json, application/json")
-                    .build()
-                chain.proceed(requestWithUserAgent)
-            }
             .build()
+
+        /** Bounding boxes (minLat, maxLat, minLon, maxLon) for areas covered by api.weather.gov */
+        private val NWS_COVERAGE_BOXES = listOf(
+            doubleArrayOf(24.0, 49.6, -125.0, -66.5),   // Contiguous US
+            doubleArrayOf(51.0, 72.0, -180.0, -129.0),  // Alaska
+            doubleArrayOf(51.0, 54.0, 172.0, 180.0),    // Western Aleutians
+            doubleArrayOf(18.5, 22.5, -161.0, -154.0),  // Hawaii
+            doubleArrayOf(17.5, 18.8, -68.0, -64.0),    // Puerto Rico & US Virgin Islands
+            doubleArrayOf(13.0, 21.0, 144.0, 146.5),    // Guam & Northern Marianas
+            doubleArrayOf(-14.7, -14.0, -171.5, -168.0) // American Samoa
+        )
+
+        fun isWithinNwsCoverage(lat: Double, lon: Double): Boolean =
+            NWS_COVERAGE_BOXES.any { lat in it[0]..it[1] && lon in it[2]..it[3] }
+
+        private fun userAgent(context: Context): String {
+            val email = context.getSharedPreferences("angel_launcher_prefs", Context.MODE_PRIVATE)
+                .getString(SettingsManager.KEY_NWS_CONTACT_EMAIL, "")?.trim().orEmpty()
+            return if (email.isNotEmpty()) "(AngelLauncher, $email)" else "(AngelLauncher)"
+        }
 
         /** In-memory cache to avoid JSON-parsing SharedPreferences every minute */
         @Volatile private var memoryCache: WeatherData? = null
@@ -210,9 +116,8 @@ class NwsWeatherRepository(private val context: Context) {
             if (roundedLat == 0.0 && roundedLon == 0.0) {
                 return@withContext Result.failure(Exception("Coordinates not set"))
             }
-            // Guard: NWS API only covers US territory (rough bounding box)
-            val inUSBounds = roundedLat in 15.0..72.0 && roundedLon in -180.0..-60.0
-            if (!inUSBounds) {
+            // Guard: NWS API only covers US territory (rough bounding boxes)
+            if (!isWithinNwsCoverage(roundedLat, roundedLon)) {
                 return@withContext Result.failure(Exception("NWS weather is only available within the United States"))
             }
 
@@ -251,28 +156,43 @@ class NwsWeatherRepository(private val context: Context) {
 
             memoryCache = weatherData
             Result.success(weatherData)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    private fun executeWithRetry(request: Request, maxRetries: Int = 3): okhttp3.Response {
-        var lastException: Exception? = null
+    private fun newRequest(url: String): Request = Request.Builder()
+        .url(url)
+        .header("User-Agent", userAgent(context))
+        .header("Accept", "application/geo+json, application/json")
+        .build()
+
+    private suspend fun Call.await(): Response = suspendCancellableCoroutine { cont ->
+        cont.invokeOnCancellation { cancel() }
+        enqueue(object : Callback {
+            override fun onResponse(call: Call, response: Response) {
+                if (cont.isActive) cont.resume(response) else response.close()
+            }
+
+            override fun onFailure(call: Call, e: IOException) {
+                if (cont.isActive) cont.resumeWithException(e)
+            }
+        })
+    }
+
+    private suspend fun executeWithRetry(request: Request, maxRetries: Int = 3): Response {
+        var lastException: IOException? = null
         for (attempt in 1..maxRetries) {
             try {
-                return client.newCall(request).execute()
-            } catch (e: Exception) {
+                return client.newCall(request).await()
+            } catch (e: IOException) {
                 lastException = e
-                if (attempt < maxRetries) {
-                    try {
-                        Thread.sleep(attempt * 400L)
-                    } catch (ie: InterruptedException) {
-                        break
-                    }
-                }
+                if (attempt < maxRetries) delay(attempt * 400L)
             }
         }
-        throw (lastException ?: Exception("Network request failed"))
+        throw lastException ?: IOException("Network request failed")
     }
 
     suspend fun fetchGridpoint(lat: Double, lon: Double): Result<Triple<String, String, String>> = withContext(Dispatchers.IO) {
@@ -280,17 +200,14 @@ class NwsWeatherRepository(private val context: Context) {
         val lonStr = String.format(Locale.US, "%.4f", lon)
         val url = "https://api.weather.gov/points/$latStr,$lonStr"
 
-        val request = Request.Builder().url(url).build()
+        val request = newRequest(url)
 
         try {
             val response = executeWithRetry(request)
             if (!response.isSuccessful) {
                 val code = response.code
                 response.close()
-                if (code == 429) {
-                    return@withContext Result.failure(Exception("NWS Rate Limit Reached (429)"))
-                }
-                return@withContext Result.failure(Exception("NWS API Error HTTP $code"))
+                return@withContext Result.failure(NwsHttpException(code))
             }
 
             // Use response.use{} to ensure body is always closed
@@ -316,23 +233,22 @@ class NwsWeatherRepository(private val context: Context) {
             }
 
             Result.success(Triple(forecastUrl, city, state))
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
     suspend fun fetchForecast(forecastUrl: String): Result<List<NwsPeriod>> = withContext(Dispatchers.IO) {
-        val request = Request.Builder().url(forecastUrl).build()
+        val request = newRequest(forecastUrl)
 
         try {
             val response = executeWithRetry(request)
             if (!response.isSuccessful) {
                 val code = response.code
                 response.close()
-                if (code == 429) {
-                    return@withContext Result.failure(Exception("NWS Rate Limit Reached (429)"))
-                }
-                return@withContext Result.failure(Exception("NWS Forecast Error HTTP $code"))
+                return@withContext Result.failure(NwsHttpException(code))
             }
 
             // Use response.use{} to ensure body is always closed
@@ -361,6 +277,8 @@ class NwsWeatherRepository(private val context: Context) {
             }
 
             Result.success(list)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }

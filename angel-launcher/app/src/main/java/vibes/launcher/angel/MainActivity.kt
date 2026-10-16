@@ -84,6 +84,24 @@ class MainActivity : FragmentActivity() {
             refreshWeather(force = true)
         }
     }
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* The service runs either way; the permission only controls whether its notification is shown */ }
+
+    private fun startMemoryLockService() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+        try {
+            startForegroundService(Intent(this, MemoryLockService::class.java))
+        } catch (e: Exception) {
+            // e.g. ForegroundServiceStartNotAllowedException when started from the background
+            android.util.Log.w("AngelLauncher", "Could not start MemoryLockService: ${e.message}")
+        }
+    }
+
     private lateinit var iconExtractor: IconExtractor
     private var currentIconPackResources: IconPackResources? = null
     
@@ -324,7 +342,7 @@ class MainActivity : FragmentActivity() {
         updateCachedDateFormat()
         setupHeaderWidget()
 
-        startForegroundService(Intent(this, MemoryLockService::class.java))
+        startMemoryLockService()
 
         val onAppClick: (AppModel) -> Unit = { app ->
             if (app.packageName == "vibes.launcher.angel.settings") {
@@ -451,7 +469,8 @@ class MainActivity : FragmentActivity() {
             packageChangeReceiver = object : BroadcastReceiver() {
                 override fun onReceive(context: Context?, intent: Intent?) {
                     val pkgName = intent?.data?.schemeSpecificPart
-                    if (pkgName != null && intent?.action == Intent.ACTION_PACKAGE_REMOVED) {
+                    val isReplacing = intent?.getBooleanExtra(Intent.EXTRA_REPLACING, false) == true
+                    if (pkgName != null && intent?.action == Intent.ACTION_PACKAGE_REMOVED && !isReplacing) {
                         lifecycleScope.launch {
                             appRepository.deleteApp(pkgName)
                         }
@@ -472,11 +491,12 @@ class MainActivity : FragmentActivity() {
                 addAction(Intent.ACTION_PACKAGE_REPLACED)
                 addDataScheme("package")
             }
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                registerReceiver(packageChangeReceiver, pkgFilter, RECEIVER_EXPORTED)
-            } else {
-                registerReceiver(packageChangeReceiver, pkgFilter)
-            }
+            androidx.core.content.ContextCompat.registerReceiver(
+                this,
+                packageChangeReceiver!!,
+                pkgFilter,
+                androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
+            )
         }
         updateClockAndDate()
     }
@@ -1668,6 +1688,7 @@ class MainActivity : FragmentActivity() {
         loadAppsJob?.cancel()
         loadAppsJob = lifecycleScope.launch {
             val rawInstalledApps = withContext(Dispatchers.IO) {
+                appRepository.pruneUninstalledApps()
                 appRepository.getInstalledApps()
             }
             allAppsList = rawInstalledApps.filter { it.packageName != applicationContext.packageName }
