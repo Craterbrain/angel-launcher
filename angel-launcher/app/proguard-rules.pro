@@ -1,9 +1,5 @@
 # R8 Proguard rules for Angel Launcher
 
-# Angel Launcher code
--keep class vibes.launcher.angel.** { *; }
--keepclassmembers class vibes.launcher.angel.** { *; }
-
 # Room Database & Generated Impl Classes
 -keep class * extends androidx.room.RoomDatabase {
     public <init>();
