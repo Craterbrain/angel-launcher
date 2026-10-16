@@ -940,43 +940,101 @@ fun ThemeScreen(
     }
 }
 
+/** One row of the Colors screen: a color + opacity pair on [SettingsManager] and how to reset it. */
+private class ColorSpec(
+    val title: String,
+    val description: String,
+    val getColor: (SettingsManager) -> Int,
+    val setColor: (SettingsManager, Int) -> Unit,
+    val getOpacity: (SettingsManager) -> Float,
+    val setOpacity: (SettingsManager, Float) -> Unit,
+    val reset: (SettingsManager) -> Unit,
+    val hasMonet: Boolean = false
+)
+
+private val colorSpecs = listOf(
+    ColorSpec(
+        "App List & Scrubber Tint",
+        "Background tint applied during State 1 (App List View)",
+        getColor = { it.appListCustomColor }, setColor = { sm, v -> sm.appListCustomColor = v },
+        getOpacity = { it.appListTintOpacity }, setOpacity = { sm, v -> sm.appListTintOpacity = v },
+        reset = { it.resetAppListTint() },
+        hasMonet = true
+    ),
+    ColorSpec(
+        "App Names & Section Headers",
+        "Text color and opacity for installed apps and alphabet headers",
+        getColor = { it.appTextColor }, setColor = { sm, v -> sm.appTextColor = v },
+        getOpacity = { it.appTextOpacity }, setOpacity = { sm, v -> sm.appTextOpacity = v },
+        reset = { it.resetAppTextColor() }
+    ),
+    ColorSpec(
+        "Scrubber Alphabet Letters",
+        "Color and opacity for right-edge alphabet index and wave preview",
+        getColor = { it.scrubberTextColor }, setColor = { sm, v -> sm.scrubberTextColor = v },
+        getOpacity = { it.scrubberTextOpacity }, setOpacity = { sm, v -> sm.scrubberTextOpacity = v },
+        reset = { it.resetScrubberTextColor() }
+    ),
+    ColorSpec(
+        "Search Bar Pill Surface",
+        "Background surface color and transparency of the search bar pill",
+        getColor = { it.searchBarColor }, setColor = { sm, v -> sm.searchBarColor = v },
+        getOpacity = { it.searchBarOpacity }, setOpacity = { sm, v -> sm.searchBarOpacity = v },
+        reset = { it.resetSearchBarColor() }
+    ),
+    ColorSpec(
+        "Search Overlay Dimming",
+        "Dim background scrim color behind active search view",
+        getColor = { it.searchDimColor }, setColor = { sm, v -> sm.searchDimColor = v },
+        getOpacity = { it.searchDimOpacity }, setOpacity = { sm, v -> sm.searchDimOpacity = v },
+        reset = { it.resetSearchDimColor() }
+    ),
+    ColorSpec(
+        "Search Floating Button (FAB)",
+        "Floating search button background color and opacity",
+        getColor = { it.searchFabColor }, setColor = { sm, v -> sm.searchFabColor = v },
+        getOpacity = { it.searchFabOpacity }, setOpacity = { sm, v -> sm.searchFabOpacity = v },
+        reset = { it.resetSearchFabColor() }
+    ),
+    ColorSpec(
+        "Header Widget Clock & Date Text",
+        "Text color and opacity for clock digits, AM/PM, and date",
+        getColor = { it.clockTextColor }, setColor = { sm, v -> sm.clockTextColor = v },
+        getOpacity = { it.clockTextOpacity }, setOpacity = { sm, v -> sm.clockTextOpacity = v },
+        reset = { it.resetClockTextColor() }
+    ),
+    ColorSpec(
+        "Header Widget Weather & Forecast Text",
+        "Text color and opacity for current weather location/temp and 5-day daily forecast",
+        getColor = { it.weatherTextColor }, setColor = { sm, v -> sm.weatherTextColor = v },
+        getOpacity = { it.weatherTextOpacity }, setOpacity = { sm, v -> sm.weatherTextOpacity = v },
+        reset = { it.resetWeatherTextColor() }
+    ),
+    ColorSpec(
+        "Edit Mode Top Banner",
+        "Background color and opacity for top banner during Edit Home Screen and Edit Layout view",
+        getColor = { it.editModeBannerColor }, setColor = { sm, v -> sm.editModeBannerColor = v },
+        getOpacity = { it.editModeBannerOpacity }, setOpacity = { sm, v -> sm.editModeBannerOpacity = v },
+        reset = { it.resetEditModeBannerColor() }
+    )
+)
+
 @Composable
 fun ColorsScreen(settingsManager: SettingsManager) {
     val context = LocalContext.current
-    var appListMonet by remember { mutableStateOf(settingsManager.appListMonetEnabled) }
-    var appListColor by remember { mutableIntStateOf(settingsManager.appListCustomColor) }
-    var appListOpacity by remember { mutableFloatStateOf(settingsManager.appListTintOpacity) }
+    // SettingsManager is the source of truth; bumping this re-reads it after every write.
+    var revision by remember { mutableIntStateOf(0) }
+    fun edit(change: () -> Unit) {
+        change()
+        revision++
+    }
 
-    var appTextColor by remember { mutableIntStateOf(settingsManager.appTextColor) }
-    var appTextOpacity by remember { mutableFloatStateOf(settingsManager.appTextOpacity) }
-
-    var scrubberTextColor by remember { mutableIntStateOf(settingsManager.scrubberTextColor) }
-    var scrubberTextOpacity by remember { mutableFloatStateOf(settingsManager.scrubberTextOpacity) }
-
-    var searchBarColor by remember { mutableIntStateOf(settingsManager.searchBarColor) }
-    var searchBarOpacity by remember { mutableFloatStateOf(settingsManager.searchBarOpacity) }
-
-    var searchDimColor by remember { mutableIntStateOf(settingsManager.searchDimColor) }
-    var searchDimOpacity by remember { mutableFloatStateOf(settingsManager.searchDimOpacity) }
-
-    var searchFabColor by remember { mutableIntStateOf(settingsManager.searchFabColor) }
-    var searchFabOpacity by remember { mutableFloatStateOf(settingsManager.searchFabOpacity) }
-
-    var clockTextColor by remember { mutableIntStateOf(settingsManager.clockTextColor) }
-    var clockTextOpacity by remember { mutableFloatStateOf(settingsManager.clockTextOpacity) }
-
-    var weatherTextColor by remember { mutableIntStateOf(settingsManager.weatherTextColor) }
-    var weatherTextOpacity by remember { mutableFloatStateOf(settingsManager.weatherTextOpacity) }
-
-    var editModeBannerColor by remember { mutableIntStateOf(settingsManager.editModeBannerColor) }
-    var editModeBannerOpacity by remember { mutableFloatStateOf(settingsManager.editModeBannerOpacity) }
-
-    var customColorDialogTarget by remember { mutableStateOf<String?>(null) }
+    var hexDialogTarget by remember { mutableStateOf<ColorSpec?>(null) }
     var customHexInput by remember { mutableStateOf("") }
 
-    if (customColorDialogTarget != null) {
+    hexDialogTarget?.let { target ->
         AlertDialog(
-            onDismissRequest = { customColorDialogTarget = null },
+            onDismissRequest = { hexDialogTarget = null },
             icon = {
                 Icon(
                     imageVector = Icons.Rounded.Colorize,
@@ -1013,56 +1071,17 @@ fun ColorsScreen(settingsManager: SettingsManager) {
             confirmButton = {
                 Button(
                     onClick = {
-                        var parseOk = true
                         val parsed = try {
                             android.graphics.Color.parseColor(
                                 if (customHexInput.startsWith("#")) customHexInput else "#$customHexInput"
                             )
                         } catch (e: Exception) {
-                            parseOk = false
                             Toast.makeText(context, "Invalid hex color: \"$customHexInput\". Use format #RRGGBB.", Toast.LENGTH_LONG).show()
-                            0
+                            null
                         }
-                        if (parseOk) {
-                            when (customColorDialogTarget) {
-                                "app_list" -> {
-                                    appListColor = parsed
-                                    settingsManager.appListCustomColor = parsed
-                                }
-                                "app_text" -> {
-                                    appTextColor = parsed
-                                    settingsManager.appTextColor = parsed
-                                }
-                                "scrubber" -> {
-                                    scrubberTextColor = parsed
-                                    settingsManager.scrubberTextColor = parsed
-                                }
-                                "search_bar" -> {
-                                    searchBarColor = parsed
-                                    settingsManager.searchBarColor = parsed
-                                }
-                                "search_dim" -> {
-                                    searchDimColor = parsed
-                                    settingsManager.searchDimColor = parsed
-                                }
-                                "search_fab" -> {
-                                    searchFabColor = parsed
-                                    settingsManager.searchFabColor = parsed
-                                }
-                                "clock_text" -> {
-                                    clockTextColor = parsed
-                                    settingsManager.clockTextColor = parsed
-                                }
-                                "weather_text" -> {
-                                    weatherTextColor = parsed
-                                    settingsManager.weatherTextColor = parsed
-                                }
-                                "edit_banner" -> {
-                                    editModeBannerColor = parsed
-                                    settingsManager.editModeBannerColor = parsed
-                                }
-                            }
-                            customColorDialogTarget = null
+                        if (parsed != null) {
+                            edit { target.setColor(settingsManager, parsed) }
+                            hexDialogTarget = null
                         }
                     },
                     shape = RoundedCornerShape(12.dp)
@@ -1072,7 +1091,7 @@ fun ColorsScreen(settingsManager: SettingsManager) {
             },
             dismissButton = {
                 TextButton(
-                    onClick = { customColorDialogTarget = null },
+                    onClick = { hexDialogTarget = null },
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Cancel")
@@ -1101,28 +1120,7 @@ fun ColorsScreen(settingsManager: SettingsManager) {
                     color = MaterialTheme.colorScheme.primary
                 )
                 TextButton(
-                    onClick = {
-                        settingsManager.resetAllColors()
-                        appListMonet = settingsManager.appListMonetEnabled
-                        appListColor = settingsManager.appListCustomColor
-                        appListOpacity = settingsManager.appListTintOpacity
-                        appTextColor = settingsManager.appTextColor
-                        appTextOpacity = settingsManager.appTextOpacity
-                        scrubberTextColor = settingsManager.scrubberTextColor
-                        scrubberTextOpacity = settingsManager.scrubberTextOpacity
-                        searchBarColor = settingsManager.searchBarColor
-                        searchBarOpacity = settingsManager.searchBarOpacity
-                        searchDimColor = settingsManager.searchDimColor
-                        searchDimOpacity = settingsManager.searchDimOpacity
-                        searchFabColor = settingsManager.searchFabColor
-                        searchFabOpacity = settingsManager.searchFabOpacity
-                        clockTextColor = settingsManager.clockTextColor
-                        clockTextOpacity = settingsManager.clockTextOpacity
-                        weatherTextColor = settingsManager.weatherTextColor
-                        weatherTextOpacity = settingsManager.weatherTextOpacity
-                        editModeBannerColor = settingsManager.editModeBannerColor
-                        editModeBannerOpacity = settingsManager.editModeBannerOpacity
-                    },
+                    onClick = { edit { settingsManager.resetAllColors() } },
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(
@@ -1136,253 +1134,27 @@ fun ColorsScreen(settingsManager: SettingsManager) {
             }
         }
 
-        // 1. App List & Scrubber Tint (State 1)
-        item {
+        items(colorSpecs) { spec ->
+            // Reading `revision` makes this item recompose after any edit.
+            @Suppress("UNUSED_EXPRESSION") revision
+            val color = spec.getColor(settingsManager)
             ModernColorSettingCard(
-                title = "App List & Scrubber Tint",
-                description = "Background tint applied during State 1 (App List View)",
-                selectedColor = appListColor,
-                selectedOpacity = appListOpacity,
-                isMonetSupported = true,
-                isMonetEnabled = appListMonet,
-                onMonetToggle = {
-                    appListMonet = it
-                    settingsManager.appListMonetEnabled = it
-                },
-                onColorSelected = {
-                    appListColor = it
-                    settingsManager.appListCustomColor = it
-                },
-                onOpacityChanged = {
-                    appListOpacity = it
-                    settingsManager.appListTintOpacity = it
-                },
+                title = spec.title,
+                description = spec.description,
+                selectedColor = color,
+                selectedOpacity = spec.getOpacity(settingsManager),
+                isMonetSupported = spec.hasMonet,
+                isMonetEnabled = spec.hasMonet && settingsManager.appListMonetEnabled,
+                onMonetToggle = if (spec.hasMonet) { enabled ->
+                    edit { settingsManager.appListMonetEnabled = enabled }
+                } else null,
+                onColorSelected = { edit { spec.setColor(settingsManager, it) } },
+                onOpacityChanged = { edit { spec.setOpacity(settingsManager, it) } },
                 onCustomHexClick = {
-                    customHexInput = String.format(java.util.Locale.US, "#%06X", 0xFFFFFF and appListColor)
-                    customColorDialogTarget = "app_list"
+                    customHexInput = String.format(java.util.Locale.US, "#%06X", 0xFFFFFF and color)
+                    hexDialogTarget = spec
                 },
-                onReset = {
-                    settingsManager.resetAppListTint()
-                    appListMonet = settingsManager.appListMonetEnabled
-                    appListColor = settingsManager.appListCustomColor
-                    appListOpacity = settingsManager.appListTintOpacity
-                }
-            )
-        }
-
-        // 2. App List Text & Section Headers
-        item {
-            ModernColorSettingCard(
-                title = "App Names & Section Headers",
-                description = "Text color and opacity for installed apps and alphabet headers",
-                selectedColor = appTextColor,
-                selectedOpacity = appTextOpacity,
-                onColorSelected = {
-                    appTextColor = it
-                    settingsManager.appTextColor = it
-                },
-                onOpacityChanged = {
-                    appTextOpacity = it
-                    settingsManager.appTextOpacity = it
-                },
-                onCustomHexClick = {
-                    customHexInput = String.format(java.util.Locale.US, "#%06X", 0xFFFFFF and appTextColor)
-                    customColorDialogTarget = "app_text"
-                },
-                onReset = {
-                    settingsManager.resetAppTextColor()
-                    appTextColor = settingsManager.appTextColor
-                    appTextOpacity = settingsManager.appTextOpacity
-                }
-            )
-        }
-
-        // 3. Scrubber Alphabet Letters
-        item {
-            ModernColorSettingCard(
-                title = "Scrubber Alphabet Letters",
-                description = "Color and opacity for right-edge alphabet index and wave preview",
-                selectedColor = scrubberTextColor,
-                selectedOpacity = scrubberTextOpacity,
-                onColorSelected = {
-                    scrubberTextColor = it
-                    settingsManager.scrubberTextColor = it
-                },
-                onOpacityChanged = {
-                    scrubberTextOpacity = it
-                    settingsManager.scrubberTextOpacity = it
-                },
-                onCustomHexClick = {
-                    customHexInput = String.format(java.util.Locale.US, "#%06X", 0xFFFFFF and scrubberTextColor)
-                    customColorDialogTarget = "scrubber"
-                },
-                onReset = {
-                    settingsManager.resetScrubberTextColor()
-                    scrubberTextColor = settingsManager.scrubberTextColor
-                    scrubberTextOpacity = settingsManager.scrubberTextOpacity
-                }
-            )
-        }
-
-        // 4. Search Bar Surface
-        item {
-            ModernColorSettingCard(
-                title = "Search Bar Pill Surface",
-                description = "Background surface color and transparency of the search bar pill",
-                selectedColor = searchBarColor,
-                selectedOpacity = searchBarOpacity,
-                onColorSelected = {
-                    searchBarColor = it
-                    settingsManager.searchBarColor = it
-                },
-                onOpacityChanged = {
-                    searchBarOpacity = it
-                    settingsManager.searchBarOpacity = it
-                },
-                onCustomHexClick = {
-                    customHexInput = String.format(java.util.Locale.US, "#%06X", 0xFFFFFF and searchBarColor)
-                    customColorDialogTarget = "search_bar"
-                },
-                onReset = {
-                    settingsManager.resetSearchBarColor()
-                    searchBarColor = settingsManager.searchBarColor
-                    searchBarOpacity = settingsManager.searchBarOpacity
-                }
-            )
-        }
-
-        // 5. Search Dim Overlay
-        item {
-            ModernColorSettingCard(
-                title = "Search Overlay Dimming",
-                description = "Dim background scrim color behind active search view",
-                selectedColor = searchDimColor,
-                selectedOpacity = searchDimOpacity,
-                onColorSelected = {
-                    searchDimColor = it
-                    settingsManager.searchDimColor = it
-                },
-                onOpacityChanged = {
-                    searchDimOpacity = it
-                    settingsManager.searchDimOpacity = it
-                },
-                onCustomHexClick = {
-                    customHexInput = String.format(java.util.Locale.US, "#%06X", 0xFFFFFF and searchDimColor)
-                    customColorDialogTarget = "search_dim"
-                },
-                onReset = {
-                    settingsManager.resetSearchDimColor()
-                    searchDimColor = settingsManager.searchDimColor
-                    searchDimOpacity = settingsManager.searchDimOpacity
-                }
-            )
-        }
-
-        // 6. Search Floating Action Button (FAB)
-        item {
-            ModernColorSettingCard(
-                title = "Search Floating Button (FAB)",
-                description = "Floating search button background color and opacity",
-                selectedColor = searchFabColor,
-                selectedOpacity = searchFabOpacity,
-                onColorSelected = {
-                    searchFabColor = it
-                    settingsManager.searchFabColor = it
-                },
-                onOpacityChanged = {
-                    searchFabOpacity = it
-                    settingsManager.searchFabOpacity = it
-                },
-                onCustomHexClick = {
-                    customHexInput = String.format(java.util.Locale.US, "#%06X", 0xFFFFFF and searchFabColor)
-                    customColorDialogTarget = "search_fab"
-                },
-                onReset = {
-                    settingsManager.resetSearchFabColor()
-                    searchFabColor = settingsManager.searchFabColor
-                    searchFabOpacity = settingsManager.searchFabOpacity
-                }
-            )
-        }
-
-        // 7. Header Widget Clock & Date Text Color
-        item {
-            ModernColorSettingCard(
-                title = "Header Widget Clock & Date Text",
-                description = "Text color and opacity for clock digits, AM/PM, and date",
-                selectedColor = clockTextColor,
-                selectedOpacity = clockTextOpacity,
-                onColorSelected = {
-                    clockTextColor = it
-                    settingsManager.clockTextColor = it
-                },
-                onOpacityChanged = {
-                    clockTextOpacity = it
-                    settingsManager.clockTextOpacity = it
-                },
-                onCustomHexClick = {
-                    customHexInput = String.format(java.util.Locale.US, "#%06X", 0xFFFFFF and clockTextColor)
-                    customColorDialogTarget = "clock_text"
-                },
-                onReset = {
-                    settingsManager.resetClockTextColor()
-                    clockTextColor = settingsManager.clockTextColor
-                    clockTextOpacity = settingsManager.clockTextOpacity
-                }
-            )
-        }
-
-        // 8. Header Widget Weather & Forecast Text Color
-        item {
-            ModernColorSettingCard(
-                title = "Header Widget Weather & Forecast Text",
-                description = "Text color and opacity for current weather location/temp and 5-day daily forecast",
-                selectedColor = weatherTextColor,
-                selectedOpacity = weatherTextOpacity,
-                onColorSelected = {
-                    weatherTextColor = it
-                    settingsManager.weatherTextColor = it
-                },
-                onOpacityChanged = {
-                    weatherTextOpacity = it
-                    settingsManager.weatherTextOpacity = it
-                },
-                onCustomHexClick = {
-                    customHexInput = String.format(java.util.Locale.US, "#%06X", 0xFFFFFF and weatherTextColor)
-                    customColorDialogTarget = "weather_text"
-                },
-                onReset = {
-                    settingsManager.resetWeatherTextColor()
-                    weatherTextColor = settingsManager.weatherTextColor
-                    weatherTextOpacity = settingsManager.weatherTextOpacity
-                }
-            )
-        }
-
-        // 9. Edit Mode Banner Tint & Background
-        item {
-            ModernColorSettingCard(
-                title = "Edit Mode Top Banner",
-                description = "Background color and opacity for top banner during Edit Home Screen and Edit Layout view",
-                selectedColor = editModeBannerColor,
-                selectedOpacity = editModeBannerOpacity,
-                onColorSelected = {
-                    editModeBannerColor = it
-                    settingsManager.editModeBannerColor = it
-                },
-                onOpacityChanged = {
-                    editModeBannerOpacity = it
-                    settingsManager.editModeBannerOpacity = it
-                },
-                onCustomHexClick = {
-                    customHexInput = String.format(java.util.Locale.US, "#%06X", 0xFFFFFF and editModeBannerColor)
-                    customColorDialogTarget = "edit_banner"
-                },
-                onReset = {
-                    settingsManager.resetEditModeBannerColor()
-                    editModeBannerColor = settingsManager.editModeBannerColor
-                    editModeBannerOpacity = settingsManager.editModeBannerOpacity
-                }
+                onReset = { edit { spec.reset(settingsManager) } }
             )
         }
 
