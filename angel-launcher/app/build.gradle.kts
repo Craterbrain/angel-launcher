@@ -11,10 +11,8 @@ android {
         applicationId = "vibes.launcher.angel"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
-        // NWS API requires a User-Agent with contact info
-        buildConfigField("String", "NWS_USER_AGENT", "\"(AngelLauncher, 58347640+Craterbrain@users.noreply.github.com)\"")
+        versionCode = 2
+        versionName = "1.2"
     }
 
     buildTypes {

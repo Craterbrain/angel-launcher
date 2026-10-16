@@ -17,6 +17,9 @@ public abstract class AppDatabase extends RoomDatabase {
                 if (INSTANCE == null) {
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
                             AppDatabase.class, "launcher_database")
+                            // Only per-app customisations live here and they can be restored from a
+                            // backup; a missing migration must not crash-loop the home screen.
+                            .fallbackToDestructiveMigration()
                             .build();
                 }
             }

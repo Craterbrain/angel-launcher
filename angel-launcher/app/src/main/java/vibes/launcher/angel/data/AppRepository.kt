@@ -1,6 +1,7 @@
 package vibes.launcher.angel.data
 
 import android.content.Context
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
@@ -18,20 +19,16 @@ class AppRepository(context: Context, private val appDao: AppDao) {
         
         // Use queryIntentActivities (flags = 0)
         val resolveInfos: List<ResolveInfo> = pm.queryIntentActivities(intent, 0)
-        val installedPackageNames = resolveInfos.map { it.activityInfo.packageName }.toSet()
-
-        val dbAppsList = appDao.getAll()
-        for (entity in dbAppsList) {
-            if (!installedPackageNames.contains(entity.packageName) && entity.packageName != "vibes.launcher.angel.settings") {
-                appDao.deleteApp(entity.packageName)
-            }
-        }
         val dbApps = appDao.getAll().associateBy { it.packageName }
-        
-        val appModels = resolveInfos.mapNotNull { resolveInfo ->
+
+        val appModels = resolveInfos.distinctBy { it.activityInfo.packageName }.map { resolveInfo ->
             val packageName = resolveInfo.activityInfo.packageName
             val label = resolveInfo.loadLabel(pm).toString()
-            val launchIntent = pm.getLaunchIntentForPackage(packageName)
+            val launchIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                component = ComponentName(packageName, resolveInfo.activityInfo.name)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+            }
             
             val entity = dbApps[packageName]
             val isHidden = entity?.isHidden ?: false
@@ -55,6 +52,35 @@ class AppRepository(context: Context, private val appDao: AppDao) {
         }
         
         appModels.sortedBy { it.displayLabel.lowercase() }
+    }
+
+    /**
+     * Removes stored settings for packages that are no longer installed at all.
+     * A package that is merely disabled or not launchable keeps its settings.
+     */
+    suspend fun pruneUninstalledApps() = withContext(Dispatchers.IO) {
+        val pm = context.packageManager
+        for (entity in appDao.getAll()) {
+            if (entity.packageName == SETTINGS_PSEUDO_PACKAGE) continue
+            val installed = try {
+                pm.getPackageInfo(entity.packageName, 0)
+                true
+            } catch (e: PackageManager.NameNotFoundException) {
+                false
+            }
+            if (!installed) appDao.deleteApp(entity.packageName)
+        }
+    }
+
+    suspend fun getAllEntities(): List<AppEntity> = withContext(Dispatchers.IO) {
+        appDao.getAll()
+    }
+
+    /** Inserts all entities atomically. */
+    suspend fun insertAll(entities: List<AppEntity>) = withContext(Dispatchers.IO) {
+        AppDatabase.getDatabase(context).runInTransaction {
+            for (entity in entities) appDao.insertApp(entity)
+        }
     }
 
     suspend fun deleteApp(packageName: String) = withContext(Dispatchers.IO) {
@@ -107,5 +133,9 @@ class AppRepository(context: Context, private val appDao: AppDao) {
                 ))
             }
         }
+    }
+
+    private companion object {
+        const val SETTINGS_PSEUDO_PACKAGE = "vibes.launcher.angel.settings"
     }
 }
