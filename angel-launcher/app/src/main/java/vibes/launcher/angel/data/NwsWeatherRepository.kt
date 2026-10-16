@@ -54,6 +54,9 @@ class NwsHttpException(val code: Int) : Exception(
     val isRetryable: Boolean get() = code == 429 || code in 500..599
 }
 
+/** The NWS API requires a contact email in the User-Agent; without one no requests are made. */
+class NwsContactMissingException : Exception("Add a contact email in Settings to enable weather")
+
 class NwsWeatherRepository(private val context: Context) {
 
     companion object {
@@ -77,11 +80,13 @@ class NwsWeatherRepository(private val context: Context) {
         fun isWithinNwsCoverage(lat: Double, lon: Double): Boolean =
             NWS_COVERAGE_BOXES.any { lat in it[0]..it[1] && lon in it[2]..it[3] }
 
-        private fun userAgent(context: Context): String {
-            val email = context.getSharedPreferences("angel_launcher_prefs", Context.MODE_PRIVATE)
+        private fun contactEmail(context: Context): String =
+            context.getSharedPreferences("angel_launcher_prefs", Context.MODE_PRIVATE)
                 .getString(SettingsManager.KEY_NWS_CONTACT_EMAIL, "")?.trim().orEmpty()
-            return if (email.isNotEmpty()) "(AngelLauncher, $email)" else "(AngelLauncher)"
-        }
+
+        fun hasContactEmail(context: Context): Boolean = contactEmail(context).contains("@")
+
+        private fun userAgent(context: Context): String = "(AngelLauncher, ${contactEmail(context)})"
 
         /** In-memory cache to avoid JSON-parsing SharedPreferences every minute */
         @Volatile private var memoryCache: WeatherData? = null
@@ -107,6 +112,9 @@ class NwsWeatherRepository(private val context: Context) {
     }
 
     suspend fun getWeatherData(lat: Double, lon: Double): Result<WeatherData> = withContext(Dispatchers.IO) {
+        if (!hasContactEmail(context)) {
+            return@withContext Result.failure(NwsContactMissingException())
+        }
         try {
             // Step 1: Format coordinates to max 4 decimal places
             val roundedLat = String.format(Locale.US, "%.4f", lat).toDouble()

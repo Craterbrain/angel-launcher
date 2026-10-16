@@ -1190,6 +1190,14 @@ class MainActivity : FragmentActivity() {
 
     private fun refreshWeather(force: Boolean) {
         if (!settingsManager.showWeather) return
+        if (!NwsWeatherRepository.hasContactEmail(this)) {
+            if (settingsManager.getCachedWeatherData() == null) {
+                weatherIconCurrentView?.setImageResource(R.drawable.ic_weather_alert)
+                weatherTextView?.text = "Add contact email in Settings"
+                forecastContainerView?.visibility = View.GONE
+            }
+            return
+        }
         val cached = settingsManager.getCachedWeatherData()
         val now = System.currentTimeMillis()
         if (!force && cached != null && (now - cached.timestamp < 3600_000L)) {

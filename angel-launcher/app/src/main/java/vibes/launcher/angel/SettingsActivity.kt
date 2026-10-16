@@ -2253,9 +2253,9 @@ fun WidgetScreen(settingsManager: SettingsManager) {
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
-                                label = { Text("Contact email (optional)") },
+                                label = { Text("Contact email (required for weather)") },
                                 supportingText = {
-                                    Text("The National Weather Service asks API clients to include a contact address. It is sent only in the weather request's User-Agent header.")
+                                    Text("The National Weather Service requires API clients to identify themselves with a contact address. Weather is disabled until you enter one. It is sent only in the weather request's User-Agent header.")
                                 },
                                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                                     keyboardType = androidx.compose.ui.text.input.KeyboardType.Email

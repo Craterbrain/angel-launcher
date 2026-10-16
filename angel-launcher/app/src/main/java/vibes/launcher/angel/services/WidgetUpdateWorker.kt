@@ -18,6 +18,11 @@ class WidgetUpdateWorker(context: Context, params: WorkerParameters) : Coroutine
             return Result.success()
         }
 
+        // NWS requires a contact email; no requests are made until the user provides one
+        if (!NwsWeatherRepository.hasContactEmail(applicationContext)) {
+            return Result.success()
+        }
+
         var lat = settingsManager.weatherCustomLat
         var lon = settingsManager.weatherCustomLon
 
