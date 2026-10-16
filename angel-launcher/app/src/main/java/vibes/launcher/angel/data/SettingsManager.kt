@@ -171,7 +171,13 @@ class SettingsManager(private val context: Context) {
         get() = getCachedString("favorite_order", "")?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
         set(value) = setCachedString("favorite_order", value.joinToString(","))
 
+    /** Contact email sent in the NWS API User-Agent (NWS asks for contact info). Empty = not set. */
+    var nwsContactEmail: String
+        get() = getCachedString(KEY_NWS_CONTACT_EMAIL, "") ?: ""
+        set(value) = setCachedString(KEY_NWS_CONTACT_EMAIL, value.trim())
+
     companion object {
+        const val KEY_NWS_CONTACT_EMAIL = "nws_contact_email"
         const val SHAPE_SYSTEM = 0
         const val SHAPE_CIRCLE = 1
         const val SHAPE_SQUIRCLE = 2

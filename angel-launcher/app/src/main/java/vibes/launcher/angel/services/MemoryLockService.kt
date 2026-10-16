@@ -29,7 +29,12 @@ class MemoryLockService : Service() {
             .setSmallIcon(android.R.drawable.ic_menu_preferences)
             .build()
 
-        ServiceCompat.startForeground(this, 1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        try {
+            ServiceCompat.startForeground(this, 1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } catch (e: Exception) {
+            android.util.Log.w("MemoryLockService", "Could not enter foreground: ${e.message}")
+            stopSelf()
+        }
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
