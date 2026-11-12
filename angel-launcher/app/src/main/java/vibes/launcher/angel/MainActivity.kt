@@ -58,6 +58,7 @@ import android.widget.LinearLayout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
@@ -69,7 +70,8 @@ class MainActivity : FragmentActivity() {
     private lateinit var appListAdapter: AppListAdapter
     private lateinit var recentAppListAdapter: AppListAdapter
     private var timeTickReceiver: BroadcastReceiver? = null
-    private var packageChangeReceiver: BroadcastReceiver? = null
+    private var launcherAppsCallback: android.content.pm.LauncherApps.Callback? = null
+    private val pendingPackageChanges = mutableSetOf<String>()
     private lateinit var appRepository: AppRepository
     private lateinit var settingsManager: SettingsManager
     private lateinit var iconPackParser: IconPackParser
@@ -104,6 +106,8 @@ class MainActivity : FragmentActivity() {
 
     private lateinit var iconExtractor: IconExtractor
     private var currentIconPackResources: IconPackResources? = null
+    private var currentIconPackPackage: String? = null
+    private val iconPackMutex = kotlinx.coroutines.sync.Mutex()
     
     private var isSearchActive = false
     private var isStateOneActive = false
@@ -158,6 +162,8 @@ class MainActivity : FragmentActivity() {
         private const val REQUEST_CREATE_APPWIDGET = 1002
         var cachedFavoritesList: List<AppListItem>? = null
         var cachedFullAlphabetList: List<AppListItem>? = null
+        /** Parsed icon pack, kept across activity re-creation so the first bind already uses it. */
+        var cachedIconPack: Pair<String?, IconPackResources>? = null
     }
 
     private lateinit var clockText: TextView
@@ -179,8 +185,7 @@ class MainActivity : FragmentActivity() {
     private val uninstallLauncher = registerForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
     ) { _ ->
-        iconCacheManager.clearCache()
-        loadApps()
+        // Nothing to do: the LauncherApps callback and onResume both reload the list.
     }
 
     private val pickWidgetLauncher = registerForActivityResult(
@@ -369,8 +374,12 @@ class MainActivity : FragmentActivity() {
             showAppOptions(app)
         }
 
+        cachedIconPack?.takeIf { it.first == settingsManager.iconPackPackage }?.let { (pack, resources) ->
+            currentIconPackPackage = pack
+            currentIconPackResources = resources
+        }
         val initialItems = if (isStateOneActive) (cachedFullAlphabetList ?: emptyList()) else (cachedFavoritesList ?: emptyList())
-        appListAdapter = AppListAdapter(initialItems, lifecycleScope, iconCacheManager, iconExtractor, null, null, settingsManager, onAppClick, onAppLongClick)
+        appListAdapter = AppListAdapter(initialItems, lifecycleScope, iconCacheManager, iconExtractor, currentIconPackPackage, currentIconPackResources, settingsManager, onAppClick, onAppLongClick)
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.itemAnimator = null
         recyclerView.adapter = appListAdapter
@@ -419,7 +428,7 @@ class MainActivity : FragmentActivity() {
 
         // Search UI Setup
         val recentAppsRecyclerView = findViewById<RecyclerView>(R.id.recentAppsRecyclerView)
-        recentAppListAdapter = AppListAdapter(emptyList(), lifecycleScope, iconCacheManager, iconExtractor, null, null, settingsManager, onAppClick, onAppLongClick)
+        recentAppListAdapter = AppListAdapter(emptyList(), lifecycleScope, iconCacheManager, iconExtractor, currentIconPackPackage, currentIconPackResources, settingsManager, onAppClick, onAppLongClick)
         recentAppsRecyclerView.layoutManager = LinearLayoutManager(this)
         recentAppsRecyclerView.itemAnimator = null
         recentAppsRecyclerView.adapter = recentAppListAdapter
@@ -444,6 +453,7 @@ class MainActivity : FragmentActivity() {
 
         initAppWidgetHost()
 
+        registerPackageCallback()
         loadApps()
     }
 
@@ -473,39 +483,6 @@ class MainActivity : FragmentActivity() {
                 androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
             )
         }
-        if (packageChangeReceiver == null) {
-            packageChangeReceiver = object : BroadcastReceiver() {
-                override fun onReceive(context: Context?, intent: Intent?) {
-                    val pkgName = intent?.data?.schemeSpecificPart
-                    val isReplacing = intent?.getBooleanExtra(Intent.EXTRA_REPLACING, false) == true
-                    if (pkgName != null && intent?.action == Intent.ACTION_PACKAGE_REMOVED && !isReplacing) {
-                        lifecycleScope.launch {
-                            appRepository.deleteApp(pkgName)
-                        }
-                    }
-                    debouncedPackageChangeJob?.cancel()
-                    debouncedPackageChangeJob = lifecycleScope.launch {
-                        delay(300)
-                        iconCacheManager.clearCache()
-                        loadApps()
-                    }
-                }
-            }
-            val pkgFilter = IntentFilter().apply {
-                addAction(Intent.ACTION_PACKAGE_ADDED)
-                addAction(Intent.ACTION_PACKAGE_REMOVED)
-                addAction(Intent.ACTION_PACKAGE_FULLY_REMOVED)
-                addAction(Intent.ACTION_PACKAGE_CHANGED)
-                addAction(Intent.ACTION_PACKAGE_REPLACED)
-                addDataScheme("package")
-            }
-            androidx.core.content.ContextCompat.registerReceiver(
-                this,
-                packageChangeReceiver!!,
-                pkgFilter,
-                androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
-            )
-        }
         updateClockAndDate()
     }
 
@@ -524,13 +501,15 @@ class MainActivity : FragmentActivity() {
             }
             timeTickReceiver = null
         }
-        packageChangeReceiver?.let {
-            try { unregisterReceiver(it) } catch (e: Exception) {}
-            packageChangeReceiver = null
-        }
     }
 
     override fun onDestroy() {
+        launcherAppsCallback?.let { callback ->
+            try {
+                getSystemService(android.content.pm.LauncherApps::class.java)?.unregisterCallback(callback)
+            } catch (e: Exception) {}
+            launcherAppsCallback = null
+        }
         if (::settingsManager.isInitialized) {
             settingsManager.destroy()
         }
@@ -546,35 +525,18 @@ class MainActivity : FragmentActivity() {
         loadApps()
         
         lifecycleScope.launch {
-            val currentIconPackPackage = settingsManager.iconPackPackage
-            val iconPackChanged = currentIconPackResources == null || appListAdapter.iconPackPackage != currentIconPackPackage
-            val currentIconShape = settingsManager.iconShape
-            val shapeChanged = appListAdapter.cachedIconShape != currentIconShape
-            val currentGlobalScale = settingsManager.globalScale
-            val currentIconScale = settingsManager.iconScale
-            val currentTextScale = settingsManager.textScale
-            val scaleChanged = appListAdapter.cachedGlobalScale != currentGlobalScale ||
-                               appListAdapter.cachedIconScale != currentIconScale ||
-                               appListAdapter.cachedTextScale != currentTextScale
-
-            if (iconPackChanged || shapeChanged) {
-                if (iconPackChanged) {
-                    currentIconPackResources = iconPackParser.parseAppFilter(this@MainActivity, currentIconPackPackage)
-                }
-                iconCacheManager.clearCache()
-            }
-            
-            appListAdapter.iconPackPackage = currentIconPackPackage
-            appListAdapter.iconPackResources = currentIconPackResources
-            recentAppListAdapter.iconPackPackage = currentIconPackPackage
-            recentAppListAdapter.iconPackResources = currentIconPackResources
+            applyIconPack()
+            val scaleChanged = appListAdapter.cachedGlobalScale != settingsManager.globalScale ||
+                               appListAdapter.cachedIconScale != settingsManager.iconScale ||
+                               appListAdapter.cachedTextScale != settingsManager.textScale
+            // Keys already include pack and shape; this only reclaims space after either changes.
+            iconCacheManager.clearIfSignatureChanged("${settingsManager.iconPackPackage}|${settingsManager.iconShape}")
 
             // Refresh cached settings values (scale, colors, shape) in adapters
-            appListAdapter.refreshSettings()
-            recentAppListAdapter.refreshSettings()
+            val settingsChanged = appListAdapter.refreshSettings() or recentAppListAdapter.refreshSettings()
 
-            if (iconPackChanged || shapeChanged || scaleChanged) {
-                // Full adapter swap when pack, shape, or scale changed (forces ViewHolder recreation for new icon sizes/shapes)
+            if (scaleChanged) {
+                // Full adapter swap when scale changed (forces ViewHolder recreation for new icon sizes)
                 recyclerView.adapter = null
                 recyclerView.recycledViewPool.clear()
                 recyclerView.adapter = appListAdapter
@@ -585,10 +547,88 @@ class MainActivity : FragmentActivity() {
                 recentAppsRecyclerView.recycledViewPool.clear()
                 recentAppsRecyclerView.adapter = recentAppListAdapter
                 recentAppListAdapter.notifyDataSetChanged()
-            } else {
-                // Just notify so colors/text are refreshed without full rebind
+            } else if (settingsChanged) {
+                // Rebind so new shapes and colors apply; skipped when nothing changed to avoid flicker
                 appListAdapter.notifyDataSetChanged()
                 recentAppListAdapter.notifyDataSetChanged()
+            }
+        }
+    }
+
+    /**
+     * Parses the selected icon pack if it is not loaded yet and hands it to the adapters,
+     * rebinding visible rows if the pack they draw with changed.
+     */
+    private suspend fun applyIconPack(): Boolean {
+        val pack = settingsManager.iconPackPackage
+        val resources = iconPackMutex.withLock {
+            val loaded = currentIconPackResources
+            if (loaded != null && currentIconPackPackage == pack) {
+                loaded
+            } else {
+                iconPackParser.parseAppFilter(this@MainActivity, pack).also {
+                    currentIconPackResources = it
+                    currentIconPackPackage = pack
+                    cachedIconPack = pack to it
+                }
+            }
+        }
+        val changed = appListAdapter.iconPackPackage != pack || appListAdapter.iconPackResources !== resources
+        appListAdapter.iconPackPackage = pack
+        appListAdapter.iconPackResources = resources
+        recentAppListAdapter.iconPackPackage = pack
+        recentAppListAdapter.iconPackResources = resources
+        if (changed) {
+            // Rebind here rather than in callers, so a caller cancelled after this point cannot drop it
+            appListAdapter.notifyDataSetChanged()
+            recentAppListAdapter.notifyDataSetChanged()
+        }
+        return changed
+    }
+
+    private fun registerPackageCallback() {
+        val launcherApps = getSystemService(android.content.pm.LauncherApps::class.java) ?: return
+        val callback = object : android.content.pm.LauncherApps.Callback() {
+            override fun onPackageRemoved(packageName: String?, user: android.os.UserHandle?) = onPackageEvent(user, packageName)
+            override fun onPackageAdded(packageName: String?, user: android.os.UserHandle?) = onPackageEvent(user, packageName)
+            override fun onPackageChanged(packageName: String?, user: android.os.UserHandle?) = onPackageEvent(user, packageName)
+            override fun onPackagesAvailable(packageNames: Array<out String>?, user: android.os.UserHandle?, replacing: Boolean) =
+                onPackageEvent(user, *packageNames.orEmpty())
+            override fun onPackagesUnavailable(packageNames: Array<out String>?, user: android.os.UserHandle?, replacing: Boolean) =
+                onPackageEvent(user, *packageNames.orEmpty())
+        }
+        try {
+            // Registered for the activity's lifetime (not just while started), so installs and
+            // updates done from another app in the foreground are not missed.
+            launcherApps.registerCallback(callback)
+            launcherAppsCallback = callback
+        } catch (e: Exception) {
+            android.util.Log.w("AngelLauncher", "Could not register LauncherApps callback: ${e.message}")
+        }
+    }
+
+    private fun onPackageEvent(user: android.os.UserHandle?, vararg packageNames: String?) {
+        // Only the current profile's apps are listed
+        if (user != null && user != android.os.Process.myUserHandle()) return
+        packageNames.filterNotNullTo(pendingPackageChanges)
+        // Debounce: an update fires several callbacks in a row
+        debouncedPackageChangeJob?.cancel()
+        debouncedPackageChangeJob = lifecycleScope.launch {
+            delay(300)
+            val changed = pendingPackageChanges.toList()
+            pendingPackageChanges.clear()
+            withContext(kotlinx.coroutines.NonCancellable) {
+                if (settingsManager.iconPackPackage in changed) {
+                    // The icon pack itself changed: re-parse it and redraw every icon
+                    iconPackMutex.withLock { currentIconPackResources = null }
+                    iconCacheManager.clearCache()
+                    applyIconPack()
+                } else {
+                    // Only the changed apps' icons are dropped; their rows rebind because the
+                    // reloaded AppModel differs (lastUpdateTime), every other row is left alone.
+                    changed.forEach { iconCacheManager.invalidatePackage(it) }
+                }
+                loadApps()
             }
         }
     }
@@ -1389,7 +1429,7 @@ class MainActivity : FragmentActivity() {
                             useDefaultIcon = (customPack == "system" || customDrawable == "system")
                         )
                         appRepository.updateApp(updatedApp)
-                        iconCacheManager.clearCache()
+                        iconCacheManager.invalidatePackage(app.packageName)
                         loadApps()
                     }
                 }
@@ -1733,6 +1773,7 @@ class MainActivity : FragmentActivity() {
     private fun loadApps() {
         loadAppsJob?.cancel()
         loadAppsJob = lifecycleScope.launch {
+            applyIconPack()
             val rawInstalledApps = withContext(Dispatchers.IO) {
                 appRepository.pruneUninstalledApps()
                 appRepository.getInstalledApps()
@@ -1746,7 +1787,7 @@ class MainActivity : FragmentActivity() {
                 packageName = "vibes.launcher.angel.settings",
                 isHidden = false,
                 isPinned = false,
-                launchIntent = null,
+                activityName = null,
                 isFavoriteSection = false
             )
             
@@ -1802,21 +1843,16 @@ class MainActivity : FragmentActivity() {
                 }
             }
             
-            // Populate recent apps — use bulk getInstalledPackages to avoid O(n) IPC calls
-            val installTimes: Map<String, Long> = withContext(Dispatchers.IO) {
-                try {
-                    packageManager.getInstalledPackages(0).associate { it.packageName to it.firstInstallTime }
-                } catch (e: Exception) { emptyMap() }
-            }
+            // Populate recent apps (install times come from the repository's bulk package query)
             val recentApps = allApps
-                .sortedByDescending { installTimes[it.packageName] ?: 0L }
+                .sortedByDescending { it.firstInstallTime }
                 .take(3)
             recentAppsList = recentApps.map { AppListItem.App(it) }
             
             // Only update adapter if search isn't active/filtering it right now
             val query = searchInput.text?.toString()?.trim() ?: ""
             if (query.isEmpty()) {
-                recentAppListAdapter.updateItems(recentAppsList)
+                recentAppListAdapter.updateItems(recentAppsList, useDiff = recentAppListAdapter.items.isNotEmpty())
             }
         }
     }
