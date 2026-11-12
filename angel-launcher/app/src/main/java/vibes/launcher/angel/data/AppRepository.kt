@@ -1,7 +1,6 @@
 package vibes.launcher.angel.data
 
 import android.content.Context
-import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
@@ -20,16 +19,16 @@ class AppRepository(context: Context, private val appDao: AppDao) {
         // Use queryIntentActivities (flags = 0)
         val resolveInfos: List<ResolveInfo> = pm.queryIntentActivities(intent, 0)
         val dbApps = appDao.getAll().associateBy { it.packageName }
+        // One bulk call instead of a getPackageInfo IPC per app
+        val packageInfos = try {
+            pm.getInstalledPackages(0).associateBy { it.packageName }
+        } catch (e: Exception) { emptyMap() }
 
         val appModels = resolveInfos.distinctBy { it.activityInfo.packageName }.map { resolveInfo ->
             val packageName = resolveInfo.activityInfo.packageName
             val label = resolveInfo.loadLabel(pm).toString()
-            val launchIntent = Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_LAUNCHER)
-                component = ComponentName(packageName, resolveInfo.activityInfo.name)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-            }
-            
+            val packageInfo = packageInfos[packageName]
+
             val entity = dbApps[packageName]
             val isHidden = entity?.isHidden ?: false
             val isPinned = entity?.isPinned ?: false
@@ -43,11 +42,13 @@ class AppRepository(context: Context, private val appDao: AppDao) {
                 packageName = packageName,
                 isHidden = isHidden,
                 isPinned = isPinned,
-                launchIntent = launchIntent,
+                activityName = resolveInfo.activityInfo.name,
                 useDefaultIcon = useDefaultIcon,
                 customIconPack = customIconPack,
                 customIconDrawable = customIconDrawable,
-                customLabel = customLabel
+                customLabel = customLabel,
+                firstInstallTime = packageInfo?.firstInstallTime ?: 0L,
+                lastUpdateTime = packageInfo?.lastUpdateTime ?: 0L
             )
         }
         
