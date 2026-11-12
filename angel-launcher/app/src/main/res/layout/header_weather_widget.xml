@@ -16,6 +16,7 @@
         
         <!-- Left Side: Clock & Date -->
         <LinearLayout
+            android:id="@+id/clockDateContainer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -83,6 +84,8 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:gravity="end"
+            android:layout_toEndOf="@id/clockDateContainer"
+            android:layout_marginStart="12dp"
             android:layout_alignParentEnd="true"
             android:layout_centerVertical="true">
             
@@ -122,6 +125,9 @@
                 android:layout_marginTop="2dp"
                 android:text="Partly cloudy"
                 android:textSize="16sp"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:breakStrategy="balanced"
                 android:textColor="#FFFFFF"
                 android:shadowColor="#80000000"
                 android:shadowDx="1"
