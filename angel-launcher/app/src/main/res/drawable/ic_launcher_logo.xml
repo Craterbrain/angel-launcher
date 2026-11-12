@@ -1,42 +1,57 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="100dp"
     android:height="100dp"
     android:viewportWidth="100"
     android:viewportHeight="100">
-    <!-- Light Grey Base -->
-    <path
-        android:fillColor="#ECEFF1"
-        android:pathData="M 50,50 m -48,0 a 48,48 0 1,0 96,0 a 48,48 0 1,0 -96,0" />
-
-    <!-- Left Mountain Leg (Illuminated) -->
-    <path
-        android:fillColor="#90A4AE"
-        android:pathData="M 38,25 L 20,80 L 46,80 L 46,25 Z" />
-
-    <!-- Right Mountain Leg (Shadowed) -->
-    <path
-        android:fillColor="#546E7A"
-        android:pathData="M 62,25 L 80,80 L 54,80 L 54,25 Z" />
-
-    <!-- Inner Waterfall Drop Shadow -->
-    <path
-        android:fillColor="#000000"
-        android:fillAlpha="0.2"
-        android:pathData="M 48,25 L 56,25 L 54,85 L 50,85 Z" />
-
-    <!-- Solid Teal Waterfall -->
-    <path
-        android:fillColor="#00B4D8"
-        android:pathData="M 46,25 L 54,25 L 51,85 L 49,85 Z" />
-
-    <!-- Right Crossbar (Darker) -->
-    <path
-        android:fillColor="#37474F"
-        android:pathData="M 54,60 L 72,60 L 69,65 L 54,65 Z" />
-
-    <!-- Left Crossbar (Lighter) -->
-    <path
-        android:fillColor="#CFD8DC"
-        android:pathData="M 46,60 L 28,60 L 31,65 L 46,65 Z" />
+    <clip-path android:pathData="M 50,50 m -48,0 a 48,48 0 1,0 96,0 a 48,48 0 1,0 -96,0" />
+    <path android:pathData="M0,0h100v100h-100z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="0" android:startY="0"
+                android:endX="0" android:endY="100">
+                <item android:offset="0" android:color="#FF0A1724" />
+                <item android:offset="1" android:color="#FF123C4A" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <group
+        android:scaleX="0.78"
+        android:scaleY="0.78"
+        android:translateX="11"
+        android:translateY="9">
+        <!-- tepui: left (lit) and right (shadow) faces of the A -->
+        <path android:fillColor="#A0623F" android:pathData="M36,8 L50,8 L50,42 L30,92 L6,92 L32,22 Z" />
+        <path android:fillColor="#6B3D27" android:pathData="M64,8 L50,8 L50,42 L70,92 L94,92 L68,22 Z" />
+        <!-- cliff-wall band where the sheer face meets the talus -->
+        <path android:fillColor="#B97650" android:pathData="M36,8 L41,8 L37.5,24 L32,22 Z" />
+        <path android:fillColor="#7E4A30" android:pathData="M64,8 L59,8 L62.5,24 L68,22 Z" />
+        <!-- jungle on the summit -->
+        <path android:fillColor="#2F8A5F" android:pathData="M34,10 C35,6 38,5 40,6.5 C41,3.5 44,3.5 45,6 C46,4.5 47.5,5 48,7 L48,10 Z" />
+        <path android:fillColor="#22684A" android:pathData="M52,10 L52,7 C52.5,4.5 54,4.5 55,6 C56,3.5 59,3.5 60,6.5 C62,5 65,6 66,10 Z" />
+        <!-- the falls -->
+        <path android:pathData="M48,7 L52,7 L52.6,40 L56.5,88 L43.5,88 L47.4,40 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="0" android:startY="7"
+                    android:endX="0" android:endY="88">
+                    <item android:offset="0" android:color="#FFE0FCFF" />
+                    <item android:offset="0.45" android:color="#FF00E5FF" />
+                    <item android:offset="1" android:color="#FF00B8D4" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path android:fillColor="#FFFFFF" android:fillAlpha="0.55" android:pathData="M48.6,8 L49.8,8 L49.2,86 L46.6,86 Z" />
+        <!-- cloud crossbar -->
+        <path android:fillColor="#F2F7FA" android:pathData="M18,67 C12,67 12,59 19,59 C20,54 27,53 30,56 C33,51.5 40,51.5 43,55.5 C46,52.5 53,52.5 56,56 C59,51.5 66,52 68,56 C71,53 78,54 80,59 C87,59 87,67 81,67 Z" />
+        <path android:fillColor="#C5D5DE" android:pathData="M17,64.5 L83,64.5 C85,65 84.5,67 81,67 L19,67 C15.5,67 15,65 17,64.5 Z" />
+        <!-- rainforest floor -->
+        <path android:fillColor="#0F4433" android:pathData="M-40,94 C-20,88 0,90 10,91 C18,87 26,88 32,91 C40,88 46,89 50,91 C55,88 62,88 68,91 C75,87 84,88 92,91 C105,88 125,89 140,93 L140,140 L-40,140 Z" />
+        <path android:fillColor="#0A3226" android:pathData="M-40,99 C-10,95 20,97 50,98 C80,97 110,95 140,99 L140,140 L-40,140 Z" />
+        <!-- spray rising from the plunge pool -->
+        <path android:fillColor="#E6F7FA" android:fillAlpha="0.75" android:pathData="M36,93 C34,88 40,86 43,88 C45,84 55,84 57,88 C60,86 66,88 64,93 Z" />
+    </group>
 </vector>
