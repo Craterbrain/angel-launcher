@@ -150,14 +150,7 @@ private fun AppOptionsSheetContent(
 
     LaunchedEffect(app) {
         val shape = SettingsManager(context).iconShape
-        val customKeyPart = if (app.customIconPack != null && app.customIconDrawable != null) {
-            "custom_${app.customIconPack}_${app.customIconDrawable}"
-        } else if (app.useDefaultIcon) {
-            "default"
-        } else {
-            iconPackPackage ?: "default"
-        }
-        val cacheKey = "${app.packageName}_${customKeyPart}_shape${shape}_size144"
+        val cacheKey = IconCacheManager.appIconKey(app, iconPackPackage, shape, 144)
 
         val memCached = iconCacheManager?.getFromMemory(cacheKey)
         if (memCached != null) {

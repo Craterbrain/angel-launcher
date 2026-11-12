@@ -56,12 +56,20 @@ class AppListAdapter(
     private var cachedTextColor: Int = android.graphics.Color.WHITE
     private var cachedDividerColor: Int = android.graphics.Color.argb(64, 255, 255, 255)
 
-    fun refreshSettings() {
+    private var cachedThemeMode: Int = settingsManager.themeMode
+
+    /** Re-reads cached settings. Returns true if anything that affects how rows draw changed. */
+    fun refreshSettings(): Boolean {
+        val before = listOf(cachedGlobalScale, cachedIconScale, cachedTextScale, cachedIconShape,
+            cachedThemeMode, cachedTextColor, cachedDividerColor)
         cachedGlobalScale = settingsManager.globalScale
         cachedIconScale = settingsManager.iconScale
         cachedTextScale = settingsManager.textScale
         cachedIconShape = settingsManager.iconShape
+        cachedThemeMode = settingsManager.themeMode
         refreshCachedColors()
+        return before != listOf(cachedGlobalScale, cachedIconScale, cachedTextScale, cachedIconShape,
+            cachedThemeMode, cachedTextColor, cachedDividerColor)
     }
 
     private fun refreshCachedColors() {
@@ -75,8 +83,12 @@ class AppListAdapter(
         )
     }
 
+    // Incremented on every update (main thread only) so a slower, older diff never overwrites a newer list.
+    private var updateGeneration = 0
+
     fun updateItems(newItems: List<AppListItem>, useDiff: Boolean = false) {
         refreshCachedColors()
+        val generation = ++updateGeneration
         if (!useDiff) {
             items = newItems
             notifyDataSetChanged()
@@ -108,9 +120,14 @@ class AppListAdapter(
                 }
             })
             withContext(Dispatchers.Main) {
+                if (generation != updateGeneration) return@withContext
                 if (items === oldItems) {
                     items = newItems
                     diffResult.dispatchUpdatesTo(this@AppListAdapter)
+                } else {
+                    // The list moved underneath the diff (e.g. a drag); apply the newest list wholesale.
+                    items = newItems
+                    notifyDataSetChanged()
                 }
             }
         }
@@ -253,6 +270,9 @@ class AppListAdapter(
         }
 
         fun bind(app: AppModel) {
+            // Rebinding the same app (update, shape change) keeps its current icon until the new one
+            // is ready instead of flashing blank; a different app starts from an empty icon.
+            val keepCurrentIcon = boundPackageName == app.packageName
             cancelJob()
             boundPackageName = app.packageName
             
@@ -293,27 +313,21 @@ class AppListAdapter(
             val expectedPackage = app.packageName
 
             if (app.packageName == "vibes.launcher.angel.settings") {
-                val cacheKey = "angel_settings_icon_shape${cachedIconShape}_size${targetIconSize}"
+                val iconShape = cachedIconShape
+                val cacheKey = IconCacheManager.builtinIconKey(app.packageName, iconShape, targetIconSize)
                 val memCached = iconCacheManager.getFromMemory(cacheKey)
                 if (memCached != null) {
                     appIcon.setImageBitmap(memCached)
                 } else {
-                    appIcon.setImageDrawable(null)
+                    if (!keepCurrentIcon) appIcon.setImageDrawable(null)
                     currentJob = scope.launch(Dispatchers.Main) {
-                        val bitmap = withContext(Dispatchers.IO) {
-                            var diskCached = iconCacheManager.getFromDisk(cacheKey)
-                            if (diskCached == null) {
-                                diskCached = iconExtractor.loadBuiltinDrawable(
-                                    itemView.context,
-                                    R.drawable.ic_settings_app,
-                                    targetIconSize,
-                                    cachedIconShape
-                                )
-                                if (diskCached != null) {
-                                    iconCacheManager.put(cacheKey, diskCached)
-                                }
-                            }
-                            diskCached
+                        val bitmap = iconCacheManager.getOrExtract(cacheKey) {
+                            iconExtractor.loadBuiltinDrawable(
+                                itemView.context,
+                                R.drawable.ic_settings_app,
+                                targetIconSize,
+                                iconShape
+                            )
                         }
                         if (boundPackageName == expectedPackage) {
                             if (bitmap != null) {
@@ -325,21 +339,18 @@ class AppListAdapter(
                     }
                 }
             } else {
-                val customKeyPart = if (app.customIconDrawable != null) {
-                    "custom_${app.customIconPack}_${app.customIconDrawable}"
-                } else if (app.useDefaultIcon) {
-                    "default"
-                } else {
-                    iconPackPackage ?: "default"
-                }
-                val cacheKey = "${app.packageName}_${customKeyPart}_shape${cachedIconShape}_size${targetIconSize}"
+                // Capture now: the extraction may run after these adapter fields change.
+                val packPackage = iconPackPackage
+                val packResources = iconPackResources
+                val iconShape = cachedIconShape
+                val cacheKey = IconCacheManager.appIconKey(app, packPackage, iconShape, targetIconSize)
                 
                 // Tier 1 Memory cache hit (fastest)
                 val memCached = iconCacheManager.getFromMemory(cacheKey)
                 if (memCached != null) {
                     appIcon.setImageBitmap(memCached)
                 } else {
-                    appIcon.setImageDrawable(null)
+                    if (!keepCurrentIcon) appIcon.setImageDrawable(null)
 
                     // Background Job for Tier 2 Disk Cache or Extraction
                     currentJob = scope.launch(Dispatchers.Main) {
@@ -347,13 +358,13 @@ class AppListAdapter(
                             iconExtractor.extractAndRasterizeIcon(
                                 itemView.context,
                                 app.packageName,
-                                iconPackPackage,
-                                iconPackResources,
+                                packPackage,
+                                packResources,
                                 targetIconSize,
                                 app.useDefaultIcon,
                                 app.customIconPack,
                                 app.customIconDrawable,
-                                cachedIconShape
+                                iconShape
                             )
                         }
                         
