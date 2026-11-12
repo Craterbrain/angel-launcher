@@ -459,6 +459,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onStart() {
         super.onStart()
+        processPendingPackageChanges(debounceMs = 0)
         if (::appWidgetHost.isInitialized) {
             try {
                 appWidgetHost.startListening()
@@ -611,14 +612,29 @@ class MainActivity : FragmentActivity() {
         // Only the current profile's apps are listed
         if (user != null && user != android.os.Process.myUserHandle()) return
         packageNames.filterNotNullTo(pendingPackageChanges)
+        // While stopped (screen off, another app in front) just remember the change; onStart handles it.
+        // Keeps the launcher asleep through background updates and Doze maintenance windows.
+        if (!lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) return
+        processPendingPackageChanges(debounceMs = 300)
+    }
+
+    private fun processPendingPackageChanges(debounceMs: Long) {
+        if (pendingPackageChanges.isEmpty()) return
         // Debounce: an update fires several callbacks in a row
         debouncedPackageChangeJob?.cancel()
         debouncedPackageChangeJob = lifecycleScope.launch {
-            delay(300)
+            delay(debounceMs)
             val changed = pendingPackageChanges.toList()
             pendingPackageChanges.clear()
             withContext(kotlinx.coroutines.NonCancellable) {
-                if (settingsManager.iconPackPackage in changed) {
+                val iconPack = settingsManager.iconPackPackage
+                val relevant = withContext(Dispatchers.IO) {
+                    changed.filter { pkg -> pkg == iconPack || isListedOrLaunchable(pkg) }
+                }
+                // Background packages (Play Services and the like) toggle components constantly;
+                // they are not in the list, so skip the reload entirely.
+                if (relevant.isEmpty()) return@withContext
+                if (iconPack != null && iconPack in relevant) {
                     // The icon pack itself changed: re-parse it and redraw every icon
                     iconPackMutex.withLock { currentIconPackResources = null }
                     iconCacheManager.clearCache()
@@ -626,10 +642,21 @@ class MainActivity : FragmentActivity() {
                 } else {
                     // Only the changed apps' icons are dropped; their rows rebind because the
                     // reloaded AppModel differs (lastUpdateTime), every other row is left alone.
-                    changed.forEach { iconCacheManager.invalidatePackage(it) }
+                    relevant.forEach { iconCacheManager.invalidatePackage(it) }
                 }
                 loadApps()
             }
+        }
+    }
+
+    private fun isListedOrLaunchable(packageName: String): Boolean {
+        if (allAppsList.any { it.packageName == packageName }) return true
+        return try {
+            getSystemService(android.content.pm.LauncherApps::class.java)
+                ?.getActivityList(packageName, android.os.Process.myUserHandle())
+                ?.isNotEmpty() == true
+        } catch (e: Exception) {
+            true
         }
     }
 
@@ -1178,17 +1205,17 @@ class MainActivity : FragmentActivity() {
         }
 
         val timeFormat = if (is24Hour) timeFormat24 else timeFormat12
-        clockText.text = timeFormat.format(now)
+        clockText.setTextIfChanged(timeFormat.format(now))
 
         if (!is24Hour && settingsManager.showAmPm) {
-            amPmText.text = amPmFormat.format(now)
+            amPmText.setTextIfChanged(amPmFormat.format(now))
             amPmText.visibility = View.VISIBLE
         } else {
             amPmText.visibility = View.GONE
         }
 
         if (settingsManager.showDate) {
-            dateText.text = cachedDateFormatter?.format(now)
+            dateText.setTextIfChanged(cachedDateFormatter?.format(now))
             dateText.visibility = View.VISIBLE
         } else {
             dateText.visibility = View.GONE
@@ -1196,6 +1223,15 @@ class MainActivity : FragmentActivity() {
 
         updateWeatherUI()
     }
+
+    /** Skips setText (and the relayout it triggers) when the text is unchanged. */
+    private fun TextView.setTextIfChanged(value: CharSequence?) {
+        if (text?.toString() != value?.toString()) text = value
+    }
+
+    // What the weather views currently show; the minute tick only redraws them when this changes.
+    private var renderedWeather: WeatherData? = null
+    private var renderedWeatherIconPack: String? = null
 
     private fun updateWeatherUI() {
         val weatherCurrent = weatherCurrentContainer ?: return
@@ -1213,8 +1249,13 @@ class MainActivity : FragmentActivity() {
         forecastContainer.visibility = if (settingsManager.show5DayForecast) View.VISIBLE else View.GONE
 
         val cached = settingsManager.getCachedWeatherData()
+        val packPkg = settingsManager.weatherIconPackPackage
+        // Weather data changes about hourly but this runs every minute: reloading six icon drawables
+        // means new GPU textures each time, so only redraw when the data or icon pack changed.
+        if (cached != null && cached === renderedWeather && packPkg == renderedWeatherIconPack) return
+        renderedWeather = cached
+        renderedWeatherIconPack = packPkg
         if (cached != null) {
-            val packPkg = settingsManager.weatherIconPackPackage
             val currentDrawable = WeatherIconHelper.loadWeatherIconFromPack(this, cached.currentShortForecast, true, packPkg)
             if (currentDrawable != null) {
                 weatherIconCurrent.setImageDrawable(currentDrawable)
@@ -1775,8 +1816,7 @@ class MainActivity : FragmentActivity() {
         loadAppsJob = lifecycleScope.launch {
             applyIconPack()
             val rawInstalledApps = withContext(Dispatchers.IO) {
-                appRepository.pruneUninstalledApps()
-                appRepository.getInstalledApps()
+                appRepository.getInstalledApps(prune = true)
             }
             allAppsList = rawInstalledApps.filter { it.packageName != applicationContext.packageName }
             val allApps = allAppsList.filter { !it.isHidden }
