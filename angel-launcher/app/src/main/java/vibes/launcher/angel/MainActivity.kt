@@ -91,6 +91,9 @@ class MainActivity : FragmentActivity() {
     ) { /* The service runs either way; the permission only controls whether its notification is shown */ }
 
     private fun startMemoryLockService() {
+        // Built into a ROM as a system app, the manifest's android:persistent keeps this process alive on its own:
+        // no foreground service, so no notification
+        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM != 0) return
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
             checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
         ) {
